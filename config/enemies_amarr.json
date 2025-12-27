@@ -1,0 +1,194 @@
+{
+  "faction": "Amarr Empire",
+  "visual_theme": {
+    "primary_color": [0.85, 0.68, 0.15],
+    "secondary_color": [0.72, 0.53, 0.04],
+    "accent_color": [1.0, 1.0, 0.9],
+    "projectile_color": [1.0, 0.9, 0.3],
+    "aesthetic": "ornate_religious"
+  },
+
+  "enemy_types": {
+    "punisher": {
+      "name": "Amarr Punisher",
+      "type_id": 597,
+      "role": "basic",
+      "behavior": "linear",
+      "health": 40,
+      "speed": 80,
+      "score": 100,
+      "fire_rate": 1.0,
+      "damage": 8,
+      "description": "Standard Imperial patrol frigate"
+    },
+
+    "zealot_fanatic": {
+      "name": "Zealot Fanatic",
+      "type_id": 12003,
+      "role": "kamikaze",
+      "behavior": "kamikaze",
+      "health": 25,
+      "speed": 180,
+      "score": 150,
+      "fire_rate": 0,
+      "damage": 50,
+      "description": "Religious extremist on suicide run",
+      "visual_effects": ["burning_engines", "golden_trail"]
+    },
+
+    "imperial_slicer": {
+      "name": "Imperial Navy Slicer",
+      "type_id": 17703,
+      "role": "weaver",
+      "behavior": "zigzag",
+      "health": 30,
+      "speed": 150,
+      "score": 120,
+      "fire_rate": 2.0,
+      "damage": 6,
+      "description": "Fast attack craft, harassing fire",
+      "visual_effects": ["golden_trails"]
+    },
+
+    "oracle_gunship": {
+      "name": "Oracle Gunship",
+      "type_id": 4302,
+      "role": "sniper",
+      "behavior": "sniper",
+      "health": 60,
+      "speed": 40,
+      "score": 200,
+      "fire_rate": 0.5,
+      "damage": 25,
+      "description": "Long-range beam laser platform",
+      "visual_effects": ["charging_beam"]
+    },
+
+    "bestower_transport": {
+      "name": "Bestower Transport",
+      "type_id": 1944,
+      "role": "spawner",
+      "behavior": "linear",
+      "health": 120,
+      "speed": 30,
+      "score": 300,
+      "fire_rate": 0.3,
+      "damage": 5,
+      "spawn_type": "fighter_drone",
+      "spawn_count": 4,
+      "spawn_interval": 3.0,
+      "liberation_value": 10,
+      "description": "Slave transport, liberation priority target"
+    },
+
+    "maller_cruiser": {
+      "name": "Maller Heavy Cruiser",
+      "type_id": 631,
+      "role": "tank",
+      "behavior": "linear",
+      "health": 200,
+      "speed": 35,
+      "score": 250,
+      "fire_rate": 0.8,
+      "damage": 15,
+      "armor_resist": 0.4,
+      "description": "Heavy armor, absorbs punishment",
+      "visual_effects": ["thick_plating"]
+    },
+
+    "fighter_drone": {
+      "name": "Amarr Fighter Drone",
+      "type_id": 2486,
+      "role": "minion",
+      "behavior": "homing",
+      "health": 10,
+      "speed": 120,
+      "score": 25,
+      "fire_rate": 1.5,
+      "damage": 4,
+      "description": "Launched from carriers and transports"
+    },
+
+    "executioner": {
+      "name": "Executioner",
+      "type_id": 589,
+      "role": "fast_attack",
+      "behavior": "orbital",
+      "health": 25,
+      "speed": 140,
+      "score": 80,
+      "fire_rate": 1.5,
+      "damage": 5,
+      "description": "Fast interceptor, circles target"
+    },
+
+    "tormentor": {
+      "name": "Tormentor",
+      "type_id": 591,
+      "role": "support",
+      "behavior": "zigzag",
+      "health": 35,
+      "speed": 90,
+      "score": 90,
+      "fire_rate": 1.2,
+      "damage": 7,
+      "description": "Balanced frigate, beam lasers"
+    }
+  },
+
+  "wave_compositions": {
+    "convoy_escort": {
+      "description": "Slave transport with escorts",
+      "units": [
+        {"type": "bestower_transport", "count": 1},
+        {"type": "punisher", "count": 4}
+      ],
+      "formation": "line",
+      "liberation_bonus": true
+    },
+
+    "patrol_sweep": {
+      "description": "Standard patrol pattern",
+      "units": [
+        {"type": "executioner", "count": 2},
+        {"type": "punisher", "count": 3}
+      ],
+      "formation": "sine_wave"
+    },
+
+    "heavy_response": {
+      "description": "Imperial Navy response force",
+      "units": [
+        {"type": "maller_cruiser", "count": 1},
+        {"type": "tormentor", "count": 3},
+        {"type": "punisher", "count": 2}
+      ],
+      "formation": "pincer"
+    },
+
+    "fanatic_wave": {
+      "description": "Religious zealots",
+      "units": [
+        {"type": "zealot_fanatic", "count": 4}
+      ],
+      "formation": "rush"
+    },
+
+    "sniper_ambush": {
+      "description": "Long-range fire support",
+      "units": [
+        {"type": "oracle_gunship", "count": 2},
+        {"type": "imperial_slicer", "count": 3}
+      ],
+      "formation": "spread"
+    },
+
+    "carrier_wing": {
+      "description": "Carrier fighter deployment",
+      "units": [
+        {"type": "fighter_drone", "count": 8}
+      ],
+      "formation": "swarm"
+    }
+  }
+}

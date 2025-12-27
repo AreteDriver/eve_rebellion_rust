@@ -1,0 +1,128 @@
+{
+  "character": {
+    "name": "Tribal Elder",
+    "role": "Fleet Command Mentor",
+    "description": "Ancient Minmatar Elder, voice of the Fleet. Gender-neutral, measured, fierce.",
+    "speaking_style": "Deliberate, references ancestors, never panics"
+  },
+
+  "mission_briefings": {
+    "act_1": {
+      "stage_1": "The Elders have watched from the shadows for centuries. Now we strike. A slave convoy approaches - lightly defended. Prove you are worthy to fly with the Fleet.",
+      "stage_2": "Imperial patrol routes grow predictable. Intercept and destroy. No survivors to report our movements.",
+      "stage_3": "An orbital depot supplies their patrols. Cripple it. Let them know nowhere is safe.",
+      "stage_4": "A minor Holder's estate. His slaves await liberation. His guards await death. Do not disappoint either."
+    },
+    "act_2": {
+      "stage_5": "The Empire reels. Press the attack. Their customs checkpoint controls this sector - destroy it.",
+      "stage_6": "An Inquisitor vessel enforces their religious tyranny. Show them our faith is stronger.",
+      "stage_7": "Imperial Navy strike group inbound. Elite pilots. But they have never faced the fury of the liberated.",
+      "stage_8": "The stargate defense grid controls access to core Amarr space. Disable it. Open the path.",
+      "stage_9": "Every slave freed is a soul returned to our people. This battlestation holds thousands. Crack it open."
+    },
+    "act_3": {
+      "stage_10": "This is the hour our ancestors dreamed of. An Armageddon-class battleship guards their retreat. End it.",
+      "stage_11": "Their carrier launches endless fighters. Endless. But you are more endless still.",
+      "stage_12": "The Lord Admiral himself. Two centuries of Imperial service. He ends today.",
+      "stage_13": "The chains break today. An Avatar-class Titan - the Empire's last desperate response. Destroy it, and the liberation is complete. The Elders watch. History watches. Fly well, pilot."
+    }
+  },
+
+  "post_mission": {
+    "success": [
+      "Well flown, pilot. The Elders take note.",
+      "Another blow struck for freedom. Continue.",
+      "Your ancestors would be proud this day.",
+      "Steel and fire. That is what you have become.",
+      "The Empire bleeds. Do not let them recover.",
+      "Every ship you destroy is a message: we are coming.",
+      "The rust falls away. Only strength remains.",
+      "You carry the fury of generations. Let it burn."
+    ],
+    "liberation_success": [
+      "Souls freed. This is why we fight.",
+      "They breathe free air for the first time. Because of you.",
+      "Each liberation echoes through history.",
+      "The ancestors weep with joy. You bring their children home."
+    ],
+    "boss_defeated": [
+      "A worthy kill. The Fleet salutes you.",
+      "Their commander falls. Their formation breaks. Press on.",
+      "This victory will be sung for generations.",
+      "The Empire learns fear today. Your name is the lesson."
+    ],
+    "perfect_run": [
+      "Flawless. The Elders are impressed.",
+      "Not a scratch. You fly as our ancestors did - untouchable.",
+      "Perfect execution. You honor the Fleet."
+    ]
+  },
+
+  "liberation_milestones": {
+    "100": {
+      "dialogue": "A hundred souls returned to freedom. The Elders see your worth.",
+      "title": "Liberator"
+    },
+    "250": {
+      "dialogue": "Two hundred and fifty. You begin to understand what this means.",
+      "title": "Chain Breaker"
+    },
+    "500": {
+      "dialogue": "Five hundred chains broken. You carry the spirit of the Rebellion.",
+      "title": "Fleet Champion"
+    },
+    "1000": {
+      "dialogue": "A thousand lives reclaimed. Songs will be sung of this day.",
+      "title": "Elder's Chosen"
+    },
+    "2500": {
+      "dialogue": "Twenty-five hundred souls freed by your hand. A village reborn.",
+      "title": "Liberation Hero"
+    },
+    "5000": {
+      "dialogue": "Five thousand. You have liberated a city. History will remember.",
+      "title": "Ancestor's Pride"
+    },
+    "10000": {
+      "dialogue": "Ten thousand souls freed by your hand. You are legend now.",
+      "title": "Legend of the Fleet"
+    },
+    "25000": {
+      "dialogue": "The Elders bow to you. Twenty-five thousand. A nation freed.",
+      "title": "Elder Fleet Legend"
+    }
+  },
+
+  "ship_upgrade": {
+    "rifter_to_wolf": "You have earned a new ship. The Wolf - no more rust, just steel. The Fleet honors your service.",
+    "wolf_to_jaguar": "The Jaguar awaits you. The fastest, deadliest assault frigate in our arsenal. You have earned this. Now earn the victory."
+  },
+
+  "act_transitions": {
+    "act_1_complete": "The first victories are won. But this was merely the beginning. The true storm approaches.",
+    "act_2_complete": "The Empire's outer defenses crumble. Now we strike at their heart. Prepare yourself.",
+    "act_3_complete": "It is done. The Titan falls. The Elder Fleet's mission is complete. Millions are free. And you... you are legend."
+  },
+
+  "combat_callouts": {
+    "low_health": "Your ship struggles. Fight smarter.",
+    "near_death": "Do not fall here. Not now. Not when we are so close.",
+    "berserk_active": "The ancestors fill you with rage. Use it!",
+    "overheated": "Your weapons strain. But do not stop. Never stop.",
+    "boss_low_health": "It weakens! Strike true!",
+    "wave_incoming": "More enemies approach. Steel yourself.",
+    "liberation_pod": "A liberation pod! Collect it - a soul awaits freedom."
+  },
+
+  "death_messages": {
+    "standard": "You fall... but the Fleet continues. Rise again, pilot.",
+    "boss_fight": "The battle is not over. Return and finish what you started.",
+    "final_boss": "So close... But the Titan still stands. The liberation is not complete. Try again."
+  },
+
+  "taglines": {
+    "act_1": "In Rust We Trust!",
+    "act_2": "No more rust - just steel!",
+    "act_3": "From rust to legend!"
+  }
+}

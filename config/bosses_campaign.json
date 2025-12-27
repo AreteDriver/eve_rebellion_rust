@@ -1,0 +1,473 @@
+{
+  "campaign": "Elder Fleet Liberation",
+  "total_bosses": 13,
+
+  "act_1": {
+    "name": "The Call",
+    "theme": "Proving yourself",
+    "player_ship": "Rifter",
+    "tagline": "In Rust We Trust!",
+
+    "bosses": [
+      {
+        "id": 1,
+        "stage": 1,
+        "name": "Slave Transport Overseer",
+        "ship_class": "Bestower",
+        "type_id": 1944,
+        "title": "Convoy Master Krador",
+        "health": 500,
+        "phases": 2,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "steady_beam",
+          "spawns_escorts": true,
+          "escort_type": "punisher",
+          "escort_count": 2
+        },
+        "phase_2": {
+          "health_threshold": 0.4,
+          "attack_pattern": "desperate_spray",
+          "spawns_escorts": true,
+          "escort_type": "fighter_drone",
+          "escort_count": 4
+        },
+        "liberation_value": 50,
+        "score": 5000,
+        "dialogue_intro": "You dare attack an Imperial transport? Foolish rebel!",
+        "dialogue_defeat": "The slaves... they're escaping..."
+      },
+
+      {
+        "id": 2,
+        "stage": 2,
+        "name": "Patrol Commander",
+        "ship_class": "Navy Omen",
+        "type_id": 2006,
+        "title": "Commander Sarevok",
+        "health": 800,
+        "phases": 2,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "focused_beams",
+          "movement": "strafe"
+        },
+        "phase_2": {
+          "health_threshold": 0.5,
+          "attack_pattern": "beam_sweep",
+          "movement": "aggressive",
+          "spawns_escorts": true,
+          "escort_type": "executioner",
+          "escort_count": 3
+        },
+        "liberation_value": 0,
+        "score": 7500,
+        "dialogue_intro": "Another rebel scum. I've crushed dozens like you.",
+        "dialogue_defeat": "Impossible... a frigate..."
+      },
+
+      {
+        "id": 3,
+        "stage": 3,
+        "name": "Station Defense Battery",
+        "ship_class": "Orbital Platform",
+        "type_id": 0,
+        "title": "Holding Facility Defense Grid",
+        "health": 1200,
+        "phases": 3,
+        "stationary": true,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "turret_barrage",
+          "turrets_active": 4
+        },
+        "phase_2": {
+          "health_threshold": 0.6,
+          "attack_pattern": "missile_swarm",
+          "spawns_drones": true
+        },
+        "phase_3": {
+          "health_threshold": 0.3,
+          "attack_pattern": "overcharge_beam",
+          "shield_sections": 2
+        },
+        "liberation_value": 100,
+        "score": 10000,
+        "dialogue_intro": "Defense grid online. Eliminate hostile.",
+        "dialogue_defeat": "Core breach... structural failure..."
+      },
+
+      {
+        "id": 4,
+        "stage": 4,
+        "name": "Holder's Escort Fleet",
+        "ship_class": "Mixed",
+        "type_id": 0,
+        "title": "Lord Holder Arzad's Guard",
+        "health": 1500,
+        "phases": 3,
+        "multi_target": true,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "active_ships": ["punisher", "punisher", "tormentor"],
+          "attack_pattern": "coordinated"
+        },
+        "phase_2": {
+          "health_threshold": 0.6,
+          "active_ships": ["maller_cruiser"],
+          "attack_pattern": "tank_advance"
+        },
+        "phase_3": {
+          "health_threshold": 0.3,
+          "active_ships": ["omen_navy"],
+          "flagship": true,
+          "attack_pattern": "desperate_assault"
+        },
+        "liberation_value": 75,
+        "score": 15000,
+        "dialogue_intro": "You attack a Holder's estate? You will burn for this heresy!",
+        "dialogue_defeat": "My slaves... my property... all lost..."
+      }
+    ]
+  },
+
+  "act_2": {
+    "name": "The Storm",
+    "theme": "Full invasion",
+    "player_ship": "Wolf",
+    "tagline": "No more rust - just steel!",
+
+    "bosses": [
+      {
+        "id": 5,
+        "stage": 5,
+        "name": "Imperial Customs Commandant",
+        "ship_class": "Prophecy",
+        "type_id": 630,
+        "title": "Commandant Torash",
+        "health": 2000,
+        "phases": 3,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "drone_swarm",
+          "drone_count": 6
+        },
+        "phase_2": {
+          "health_threshold": 0.6,
+          "attack_pattern": "heavy_neut",
+          "effect": "capacitor_drain"
+        },
+        "phase_3": {
+          "health_threshold": 0.3,
+          "attack_pattern": "ramming_speed",
+          "spawns_backup": true
+        },
+        "liberation_value": 150,
+        "score": 20000,
+        "dialogue_intro": "No cargo passes without Imperial inspection. Surrender.",
+        "dialogue_defeat": "The customs... will... be avenged..."
+      },
+
+      {
+        "id": 6,
+        "stage": 6,
+        "name": "Inquisitor Vessel",
+        "ship_class": "Prophecy Variant",
+        "type_id": 630,
+        "title": "Inquisitor Malkov",
+        "health": 2500,
+        "phases": 3,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "purifying_beams",
+          "effect": "screen_glow"
+        },
+        "phase_2": {
+          "health_threshold": 0.5,
+          "attack_pattern": "zealot_summon",
+          "spawns": "zealot_fanatic",
+          "spawn_count": 3
+        },
+        "phase_3": {
+          "health_threshold": 0.2,
+          "attack_pattern": "divine_wrath",
+          "screen_clear_attack": true
+        },
+        "liberation_value": 0,
+        "score": 25000,
+        "dialogue_intro": "Heretics! The Scriptures demand your purification!",
+        "dialogue_defeat": "God... will not... forget this blasphemy..."
+      },
+
+      {
+        "id": 7,
+        "stage": 7,
+        "name": "Navy Harbinger Strike Group",
+        "ship_class": "Harbinger",
+        "type_id": 629,
+        "title": "Strike Commander Venak",
+        "health": 3000,
+        "phases": 3,
+        "multi_target": true,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "active_ships": 3,
+          "attack_pattern": "beam_crossfire"
+        },
+        "phase_2": {
+          "health_threshold": 0.5,
+          "active_ships": 2,
+          "attack_pattern": "focused_fire"
+        },
+        "phase_3": {
+          "health_threshold": 0.25,
+          "flagship_only": true,
+          "attack_pattern": "overload_weapons"
+        },
+        "liberation_value": 0,
+        "score": 30000,
+        "dialogue_intro": "Strike group, weapons free. Eliminate rebel contact.",
+        "dialogue_defeat": "All ships... lost... how..."
+      },
+
+      {
+        "id": 8,
+        "stage": 8,
+        "name": "Stargate Defense Grid",
+        "ship_class": "Infrastructure",
+        "type_id": 0,
+        "title": "Gate Control: Sahtogas",
+        "health": 4000,
+        "phases": 4,
+        "stationary": true,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "sentry_guns",
+          "turret_count": 6
+        },
+        "phase_2": {
+          "health_threshold": 0.7,
+          "attack_pattern": "scrambler_pulse",
+          "effect": "movement_slow"
+        },
+        "phase_3": {
+          "health_threshold": 0.4,
+          "attack_pattern": "reinforcement_spawn",
+          "spawns": "punisher",
+          "spawn_count": 4
+        },
+        "phase_4": {
+          "health_threshold": 0.15,
+          "attack_pattern": "self_destruct_sequence",
+          "timer": 30
+        },
+        "liberation_value": 0,
+        "score": 35000,
+        "dialogue_intro": "Unauthorized vessel. Activating defense protocols.",
+        "dialogue_defeat": "Gate control... offline... rebels... have breached..."
+      },
+
+      {
+        "id": 9,
+        "stage": 9,
+        "name": "Amarr Battlestation Core",
+        "ship_class": "Station",
+        "type_id": 0,
+        "title": "Holding Facility Theta-7",
+        "health": 6000,
+        "phases": 5,
+        "stationary": true,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "defense_ring",
+          "shield_generators": 4
+        },
+        "phase_2": {
+          "health_threshold": 0.75,
+          "attack_pattern": "hangar_launch",
+          "spawns_waves": true
+        },
+        "phase_3": {
+          "health_threshold": 0.5,
+          "attack_pattern": "core_beams",
+          "beam_count": 3
+        },
+        "phase_4": {
+          "health_threshold": 0.25,
+          "attack_pattern": "last_resort",
+          "spawns": "maller_cruiser",
+          "spawn_count": 2
+        },
+        "phase_5": {
+          "health_threshold": 0.1,
+          "attack_pattern": "reactor_overload",
+          "massive_explosion": true
+        },
+        "liberation_value": 500,
+        "score": 50000,
+        "dialogue_intro": "Station defense grid activated. All personnel to combat stations.",
+        "dialogue_defeat": "Reactor critical... containment failing... the slaves are free..."
+      }
+    ]
+  },
+
+  "act_3": {
+    "name": "Liberation",
+    "theme": "Historic victory",
+    "player_ship": "Jaguar",
+    "tagline": "From rust to legend!",
+
+    "bosses": [
+      {
+        "id": 10,
+        "stage": 10,
+        "name": "Imperial Navy Armageddon",
+        "ship_class": "Armageddon",
+        "type_id": 643,
+        "title": "Admiral Karsoth's Hammer",
+        "health": 8000,
+        "phases": 3,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "drone_carrier",
+          "drone_waves": 3,
+          "drones_per_wave": 6
+        },
+        "phase_2": {
+          "health_threshold": 0.5,
+          "attack_pattern": "neut_pressure",
+          "heavy_laser_fire": true
+        },
+        "phase_3": {
+          "health_threshold": 0.2,
+          "attack_pattern": "doomsday_charge",
+          "warning_time": 5,
+          "damage": "instant_kill"
+        },
+        "liberation_value": 200,
+        "score": 75000,
+        "dialogue_intro": "You face the might of the Imperial Navy. Prepare for oblivion.",
+        "dialogue_defeat": "The Armageddon... falls... this cannot be..."
+      },
+
+      {
+        "id": 11,
+        "stage": 11,
+        "name": "Amarr Carrier",
+        "ship_class": "Archon",
+        "type_id": 23757,
+        "title": "Carrier Divine Providence",
+        "health": 10000,
+        "phases": 4,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "fighter_launch",
+          "fighter_waves": "continuous"
+        },
+        "phase_2": {
+          "health_threshold": 0.7,
+          "attack_pattern": "triage_mode",
+          "self_repair": true,
+          "repair_rate": 50
+        },
+        "phase_3": {
+          "health_threshold": 0.4,
+          "attack_pattern": "bomber_wing",
+          "heavy_ordinance": true
+        },
+        "phase_4": {
+          "health_threshold": 0.15,
+          "attack_pattern": "final_launch",
+          "all_fighters": true
+        },
+        "liberation_value": 300,
+        "score": 100000,
+        "dialogue_intro": "Launch all fighters. Annihilate the rebel frigate.",
+        "dialogue_defeat": "Flight deck... compromised... she's going down..."
+      },
+
+      {
+        "id": 12,
+        "stage": 12,
+        "name": "Lord Admiral's Apocalypse",
+        "ship_class": "Apocalypse Navy Issue",
+        "type_id": 24690,
+        "title": "Lord Admiral Vanir",
+        "health": 12000,
+        "phases": 4,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "precision_beams",
+          "tracking_speed": "high"
+        },
+        "phase_2": {
+          "health_threshold": 0.6,
+          "attack_pattern": "tactical_repositioning",
+          "summons_escorts": true
+        },
+        "phase_3": {
+          "health_threshold": 0.35,
+          "attack_pattern": "flagship_overload",
+          "damage_boost": 2.0
+        },
+        "phase_4": {
+          "health_threshold": 0.1,
+          "attack_pattern": "glorious_death",
+          "ramming": true
+        },
+        "liberation_value": 0,
+        "score": 150000,
+        "dialogue_intro": "I have served the Empire for two hundred years. You will not take this day.",
+        "dialogue_defeat": "My Emperor... I have... failed..."
+      },
+
+      {
+        "id": 13,
+        "stage": 13,
+        "name": "Avatar-class Titan",
+        "ship_class": "Avatar",
+        "type_id": 11567,
+        "title": "Imperial Titan Empress's Wrath",
+        "health": 25000,
+        "phases": 5,
+        "final_boss": true,
+        "phase_1": {
+          "health_threshold": 1.0,
+          "attack_pattern": "point_defense",
+          "turret_coverage": 360,
+          "spawns_frigates": true
+        },
+        "phase_2": {
+          "health_threshold": 0.75,
+          "attack_pattern": "focused_doomsday",
+          "doomsday_warning": 8,
+          "must_dodge": true
+        },
+        "phase_3": {
+          "health_threshold": 0.5,
+          "attack_pattern": "carrier_support",
+          "launches_fighters": true,
+          "fighter_waves": 5
+        },
+        "phase_4": {
+          "health_threshold": 0.25,
+          "attack_pattern": "desperate_barrage",
+          "all_weapons": true,
+          "enrage_mode": true
+        },
+        "phase_5": {
+          "health_threshold": 0.05,
+          "attack_pattern": "final_doomsday",
+          "screen_filling": true,
+          "epic_finale": true
+        },
+        "liberation_value": 1000,
+        "score": 500000,
+        "dialogue_intro": "A frigate? Against a Titan? Your courage is matched only by your foolishness.",
+        "dialogue_phase_2": "Feel the power of the Doomsday device!",
+        "dialogue_phase_4": "IMPOSSIBLE! How are you still alive?!",
+        "dialogue_defeat": "The Empress's Wrath... destroyed by... a single pilot... The Empire... will remember this day..."
+      }
+    ]
+  }
+}
