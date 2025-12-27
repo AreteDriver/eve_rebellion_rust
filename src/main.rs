@@ -4,6 +4,7 @@
 //! Features 5 campaigns, EVE-style mechanics, and ship sprites from CCP's Image Server.
 
 use bevy::prelude::*;
+use bevy_egui::EguiPlugin;
 
 mod core;
 mod entities;
@@ -32,6 +33,7 @@ fn main() {
             }),
             ..default()
         }))
+        .add_plugins(EguiPlugin)
 
         // Game state
         .init_state::<GameState>()

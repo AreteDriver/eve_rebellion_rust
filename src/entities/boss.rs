@@ -384,13 +384,14 @@ pub fn spawn_boss(
     let size = 64.0 * scale;
     let stationary = boss_data.stationary;
 
-    // Try to get sprite from cache
+    // Try to get sprite from cache - bosses face DOWN toward player
     let sprite = if boss_data.type_id > 0 {
         if let Some(cache) = sprite_cache {
             if let Some(texture) = cache.get(boss_data.type_id) {
                 Sprite {
                     image: texture,
                     custom_size: Some(Vec2::splat(size)),
+                    flip_y: true, // Face downward
                     ..default()
                 }
             } else {
@@ -440,8 +441,7 @@ pub fn spawn_boss(
         attack: BossAttack::default(),
         hitbox: Hitbox { radius: size / 2.0 * 0.8 },
         sprite,
-        transform: Transform::from_xyz(0.0, start_y, LAYER_ENEMIES)
-            .with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
+        transform: Transform::from_xyz(0.0, start_y, LAYER_ENEMIES),
     });
 
     true

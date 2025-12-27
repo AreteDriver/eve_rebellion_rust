@@ -307,11 +307,9 @@ fn spawn_player(
         warn!("No sprite found for ship type {}, using fallback", type_id);
     }
 
-    // Create ship entity with just the sprite (no parent container needed)
-    // This is simpler and avoids potential hierarchy issues
+    // Create ship entity with sprite
+    // Player ships face UP (no transformation needed for EVE renders which face up already)
     if let Some(texture) = ship_sprite {
-        // EVE ship renders face RIGHT by default
-        // Rotate 90° counterclockwise to face UP for player
         commands.spawn((
             Player,
             stats,
@@ -321,11 +319,10 @@ fn spawn_player(
             super::collectible::PowerupEffects::default(),
             Sprite {
                 image: texture,
-                custom_size: Some(Vec2::new(96.0, 96.0)),
+                custom_size: Some(Vec2::new(64.0, 64.0)),
                 ..default()
             },
-            Transform::from_xyz(0.0, -250.0, LAYER_PLAYER)
-                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_2)),
+            Transform::from_xyz(0.0, -250.0, LAYER_PLAYER),
         ));
     } else {
         // Fallback: simple colored sprite

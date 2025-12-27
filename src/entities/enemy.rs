@@ -230,10 +230,10 @@ fn enemy_movement(
 
 /// Enemy shooting system
 fn enemy_shooting(
+    mut commands: Commands,
     time: Res<Time>,
     player_query: Query<&Transform, With<super::Player>>,
     mut query: Query<(&Transform, &mut EnemyWeapon, &EnemyAI), With<Enemy>>,
-    _spawn_events: EventWriter<SpawnEnemyEvent>,
 ) {
     let dt = time.delta_secs();
     let player_pos = player_query
@@ -251,11 +251,16 @@ fn enemy_shooting(
             weapon.cooldown = 1.0 / weapon.fire_rate;
 
             let pos = transform.translation.truncate();
-            let _dir = (player_pos - pos).normalize_or_zero();
+            let dir = (player_pos - pos).normalize_or_zero();
 
-            // TODO: Spawn enemy projectile based on pattern
-            // For now, just log
-            // debug!("Enemy at {:?} would fire", pos);
+            // Spawn enemy projectile aimed at player
+            super::projectile::spawn_enemy_projectile(
+                &mut commands,
+                pos,
+                dir,
+                10.0,  // damage
+                200.0, // speed
+            );
         }
     }
 }
@@ -314,10 +319,9 @@ pub fn spawn_enemy(
 
     let base_color = get_enemy_color(type_id);
 
-    // Create enemy entity with sprite directly attached (no parent-child)
+    // Create enemy entity with sprite
+    // Enemies face DOWN (toward player) - flip sprite vertically
     if let Some(texture) = sprite {
-        // EVE ship renders face RIGHT by default
-        // Rotate 90° clockwise to face DOWN for enemies
         commands.spawn((
             Enemy,
             EnemyStats {
@@ -337,11 +341,11 @@ pub fn spawn_enemy(
             },
             Sprite {
                 image: texture,
-                custom_size: Some(Vec2::new(64.0, 64.0)),
+                custom_size: Some(Vec2::new(48.0, 48.0)),
+                flip_y: true, // Flip to face downward
                 ..default()
             },
-            Transform::from_xyz(position.x, position.y, LAYER_ENEMIES)
-                .with_rotation(Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2)),
+            Transform::from_xyz(position.x, position.y, LAYER_ENEMIES),
         )).id()
     } else {
         // Fallback: simple colored sprite

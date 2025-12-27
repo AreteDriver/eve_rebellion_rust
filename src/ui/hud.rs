@@ -1,10 +1,11 @@
 //! Heads-Up Display
 //!
 //! In-game UI: health bars, score, combo, heat, berserk meter, powerup indicators.
+//! EVE-style status panel with capacitor and health rings.
 
 use bevy::prelude::*;
 use crate::core::*;
-use crate::entities::{Player, ShipStats, PowerupEffects, Boss, BossData, BossState};
+use crate::entities::{Player, ShipStats, PowerupEffects, Boss, BossData, BossState, WingmanTracker, Wingman};
 use crate::systems::{ComboHeatSystem, DialogueSystem};
 
 /// HUD plugin
@@ -26,6 +27,7 @@ impl Plugin for HudPlugin {
                     update_wave_display,
                     update_boss_health_bar,
                     update_dialogue_display,
+                    update_wingman_gauge,
                 ).run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnExit(GameState::Playing), despawn_hud);
@@ -123,6 +125,18 @@ pub struct DialogueSpeakerText;
 /// Dialogue content text
 #[derive(Component)]
 pub struct DialogueContentText;
+
+/// Wingman gauge container
+#[derive(Component)]
+pub struct WingmanGauge;
+
+/// Wingman gauge fill bar
+#[derive(Component)]
+pub struct WingmanGaugeFill;
+
+/// Wingman count text
+#[derive(Component)]
+pub struct WingmanCountText;
 
 fn spawn_hud(mut commands: Commands) {
     commands
@@ -315,25 +329,115 @@ fn spawn_hud(mut commands: Commands) {
             parent
                 .spawn(Node {
                     width: Val::Percent(100.0),
-                    height: Val::Px(100.0),
-                    flex_direction: FlexDirection::Column,
+                    height: Val::Px(130.0),
+                    flex_direction: FlexDirection::Row,
+                    justify_content: JustifyContent::SpaceBetween,
                     padding: UiRect::all(Val::Px(10.0)),
-                    row_gap: Val::Px(3.0),
                     ..default()
                 })
                 .with_children(|bottom| {
-                    // Shield bar
-                    spawn_health_bar(bottom, ShieldBar, COLOR_SHIELD, "SHD");
-                    // Armor bar
-                    spawn_health_bar(bottom, ArmorBar, COLOR_ARMOR, "ARM");
-                    // Hull bar
-                    spawn_health_bar(bottom, HullBar, COLOR_HULL, "HUL");
-                    // Capacitor bar
-                    spawn_health_bar(bottom, CapacitorBar, COLOR_CAPACITOR, "CAP");
-                    // Heat meter (orange/red)
-                    spawn_health_bar(bottom, HeatBar, Color::srgb(1.0, 0.5, 0.0), "HEAT");
-                    // Berserk meter
-                    spawn_health_bar(bottom, BerserkBar, Color::srgb(0.8, 0.2, 0.8), "BRK");
+                    // Left side: Health bars (EVE-style vertical arrangement)
+                    bottom
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(3.0),
+                            ..default()
+                        })
+                        .with_children(|left| {
+                            // Shield bar (blue)
+                            spawn_health_bar(left, ShieldBar, COLOR_SHIELD, "SHIELD");
+                            // Armor bar (orange/gold)
+                            spawn_health_bar(left, ArmorBar, COLOR_ARMOR, "ARMOR");
+                            // Hull bar (gray)
+                            spawn_health_bar(left, HullBar, COLOR_HULL, "HULL");
+                            // Capacitor bar (yellow)
+                            spawn_health_bar(left, CapacitorBar, COLOR_CAPACITOR, "CAP");
+                        });
+
+                    // Center: Status meters (Heat, Berserk)
+                    bottom
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Column,
+                            row_gap: Val::Px(3.0),
+                            align_items: AlignItems::Center,
+                            ..default()
+                        })
+                        .with_children(|center| {
+                            // Heat meter (orange/red)
+                            spawn_health_bar(center, HeatBar, Color::srgb(1.0, 0.5, 0.0), "HEAT");
+                            // Berserk meter (purple)
+                            spawn_health_bar(center, BerserkBar, Color::srgb(0.8, 0.2, 0.8), "BERSERK");
+                        });
+
+                    // Right side: Wingman gauge (Rifter only)
+                    bottom
+                        .spawn((
+                            WingmanGauge,
+                            Node {
+                                flex_direction: FlexDirection::Column,
+                                row_gap: Val::Px(4.0),
+                                align_items: AlignItems::FlexEnd,
+                                ..default()
+                            },
+                        ))
+                        .with_children(|right| {
+                            // Label
+                            right.spawn((
+                                Text::new("WINGMAN"),
+                                TextFont {
+                                    font_size: 12.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.8, 0.6, 0.3)),
+                            ));
+
+                            // Progress bar container
+                            right
+                                .spawn((
+                                    Node {
+                                        width: Val::Px(100.0),
+                                        height: Val::Px(10.0),
+                                        border: UiRect::all(Val::Px(1.0)),
+                                        ..default()
+                                    },
+                                    BackgroundColor(Color::srgba(0.15, 0.1, 0.05, 0.9)),
+                                    BorderColor(Color::srgb(0.5, 0.35, 0.2)),
+                                    BorderRadius::all(Val::Px(2.0)),
+                                ))
+                                .with_children(|bar| {
+                                    bar.spawn((
+                                        WingmanGaugeFill,
+                                        Node {
+                                            width: Val::Percent(0.0),
+                                            height: Val::Percent(100.0),
+                                            ..default()
+                                        },
+                                        BackgroundColor(Color::srgb(0.8, 0.5, 0.2)),
+                                        BorderRadius::all(Val::Px(2.0)),
+                                    ));
+                                });
+
+                            // Kill count
+                            right.spawn((
+                                WingmanCountText,
+                                Text::new("0/15"),
+                                TextFont {
+                                    font_size: 11.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.6, 0.5, 0.35)),
+                            ));
+
+                            // Active wingman icons placeholder
+                            right.spawn((
+                                Text::new(""),
+                                TextFont {
+                                    font_size: 14.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.9, 0.7, 0.4)),
+                            ));
+                        });
                 });
         });
 
@@ -676,6 +780,39 @@ fn update_dialogue_display(
         for mut content in content_query.iter_mut() {
             **content = text.clone();
         }
+    }
+}
+
+/// Update wingman gauge (Rifter only)
+fn update_wingman_gauge(
+    tracker: Res<WingmanTracker>,
+    selected_ship: Res<SelectedShip>,
+    wingmen_query: Query<Entity, With<Wingman>>,
+    mut gauge_query: Query<&mut Node, With<WingmanGauge>>,
+    mut fill_query: Query<&mut Node, (With<WingmanGaugeFill>, Without<WingmanGauge>)>,
+    mut count_query: Query<&mut Text, With<WingmanCountText>>,
+) {
+    let is_rifter = selected_ship.ship == MinmatarShip::Rifter;
+
+    // Show/hide wingman gauge
+    for mut node in gauge_query.iter_mut() {
+        node.display = if is_rifter { Display::Flex } else { Display::None };
+    }
+
+    if !is_rifter {
+        return;
+    }
+
+    // Update fill bar
+    let progress = tracker.progress() * 100.0;
+    for mut node in fill_query.iter_mut() {
+        node.width = Val::Percent(progress);
+    }
+
+    // Update count text
+    let wingman_count = wingmen_query.iter().count();
+    for mut text in count_query.iter_mut() {
+        **text = format!("{}/{} | Active: {}", tracker.kill_count, tracker.kills_per_wingman, wingman_count);
     }
 }
 

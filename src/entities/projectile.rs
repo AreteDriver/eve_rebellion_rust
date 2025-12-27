@@ -123,47 +123,37 @@ fn spawn_player_projectiles(
         let velocity = event.direction * PLAYER_BULLET_SPEED;
 
         // Determine damage type and color from weapon
-        let (damage_type, bullet_color, glow_color) = match event.weapon_type {
+        let (damage_type, bullet_color) = match event.weapon_type {
             WeaponType::Autocannon | WeaponType::Artillery => (
                 DamageType::Kinetic,
-                Color::srgb(1.0, 0.9, 0.4),      // Yellow core
-                Color::srgba(1.0, 0.6, 0.2, 0.5), // Orange glow
+                Color::srgb(1.0, 0.9, 0.4),      // Yellow/orange
             ),
             WeaponType::Laser => (
                 DamageType::EM,
-                Color::srgb(1.0, 0.3, 0.3),      // Red core
-                Color::srgba(1.0, 0.5, 0.5, 0.5), // Red glow
+                Color::srgb(1.0, 0.3, 0.3),      // Red
             ),
             WeaponType::Railgun => (
                 DamageType::Kinetic,
-                Color::srgb(0.5, 0.8, 1.0),      // Cyan core
-                Color::srgba(0.3, 0.6, 1.0, 0.5), // Blue glow
+                Color::srgb(0.5, 0.8, 1.0),      // Cyan
             ),
             WeaponType::MissileLauncher => (
                 DamageType::Explosive,
-                Color::srgb(1.0, 0.5, 0.2),      // Orange core
-                Color::srgba(1.0, 0.3, 0.1, 0.5), // Red glow
+                Color::srgb(1.0, 0.5, 0.2),      // Orange
             ),
             WeaponType::Drone => (
                 DamageType::Thermal,
-                Color::srgb(0.8, 1.0, 0.5),      // Green core
-                Color::srgba(0.5, 1.0, 0.3, 0.5), // Green glow
+                Color::srgb(0.8, 1.0, 0.5),      // Green
             ),
         };
 
-        // Berserk mode makes bullets more intense
-        let (core_color, outer_color) = if berserk.is_active {
-            (
-                Color::srgb(1.0, 0.2, 0.8),       // Purple core
-                Color::srgba(1.0, 0.4, 1.0, 0.6), // Purple glow
-            )
+        // Berserk mode makes bullets purple
+        let color = if berserk.is_active {
+            Color::srgb(1.0, 0.2, 0.8)
         } else {
-            (bullet_color, glow_color)
+            bullet_color
         };
 
-        // Calculate bullet rotation
-        let angle = event.direction.y.atan2(event.direction.x) - std::f32::consts::FRAC_PI_2;
-
+        // Simple single-entity projectile (no parent-child hierarchy)
         commands.spawn((
             PlayerProjectile,
             ProjectilePhysics {
@@ -174,40 +164,13 @@ fn spawn_player_projectiles(
                 damage: PLAYER_BULLET_DAMAGE * damage_mult,
                 damage_type,
             },
-            Transform::from_xyz(event.position.x, event.position.y, LAYER_PLAYER_BULLETS)
-                .with_rotation(Quat::from_rotation_z(angle)),
-            Visibility::default(),
-        )).with_children(|parent| {
-            // Core (bright center)
-            parent.spawn((
-                Sprite {
-                    color: core_color,
-                    custom_size: Some(Vec2::new(4.0, 14.0)),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, 0.0, 0.1),
-            ));
-
-            // Glow (outer)
-            parent.spawn((
-                Sprite {
-                    color: outer_color,
-                    custom_size: Some(Vec2::new(8.0, 20.0)),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, 0.0, 0.0),
-            ));
-
-            // Trail
-            parent.spawn((
-                Sprite {
-                    color: outer_color.with_alpha(0.3),
-                    custom_size: Some(Vec2::new(3.0, 30.0)),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, -18.0, -0.1),
-            ));
-        });
+            Sprite {
+                color,
+                custom_size: Some(Vec2::new(4.0, 12.0)),
+                ..default()
+            },
+            Transform::from_xyz(event.position.x, event.position.y, LAYER_PLAYER_BULLETS),
+        ));
     }
 }
 

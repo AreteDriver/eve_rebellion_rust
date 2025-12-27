@@ -7,12 +7,14 @@ pub mod enemy;
 pub mod projectile;
 pub mod collectible;
 pub mod boss;
+pub mod wingman;
 
 pub use player::*;
 pub use enemy::*;
 pub use projectile::*;
 pub use collectible::*;
 pub use boss::*;
+pub use wingman::*;
 
 use bevy::prelude::*;
 
@@ -26,6 +28,7 @@ impl Plugin for EntitiesPlugin {
             EnemyPlugin,
             ProjectilePlugin,
             CollectiblePlugin,
+            WingmanPlugin,
         ));
     }
 }
