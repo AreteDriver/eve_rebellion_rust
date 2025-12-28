@@ -12,6 +12,7 @@ pub mod boss;
 pub mod dialogue;
 pub mod audio;
 pub mod maneuvers;
+pub mod campaign;
 
 pub use collision::*;
 pub use spawning::*;
@@ -23,6 +24,7 @@ pub use boss::*;
 pub use dialogue::*;
 pub use audio::*;
 pub use maneuvers::*;
+pub use campaign::CampaignPlugin;
 
 use bevy::prelude::*;
 
@@ -42,6 +44,7 @@ impl Plugin for SystemsPlugin {
             DialoguePlugin,
             AudioPlugin,
             ManeuverPlugin,
+            CampaignPlugin,
         ));
     }
 }

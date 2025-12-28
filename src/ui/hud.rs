@@ -25,6 +25,7 @@ impl Plugin for HudPlugin {
                     update_combo_kills,
                     update_powerup_indicators,
                     update_wave_display,
+                    update_mission_display,
                     update_boss_health_bar,
                     update_dialogue_display,
                     update_wingman_gauge,
@@ -81,6 +82,18 @@ pub struct ComboKillsText;
 /// Wave display text
 #[derive(Component)]
 pub struct WaveText;
+
+/// Mission name text
+#[derive(Component)]
+pub struct MissionNameText;
+
+/// Mission objective text
+#[derive(Component)]
+pub struct ObjectiveText;
+
+/// Souls liberated text
+#[derive(Component)]
+pub struct SoulsText;
 
 /// Powerup indicator container
 #[derive(Component)]
@@ -162,7 +175,7 @@ fn spawn_hud(mut commands: Commands) {
                     ..default()
                 })
                 .with_children(|top| {
-                    // Left: Score and wave
+                    // Left: Score, mission, and wave
                     top.spawn(Node {
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::FlexStart,
@@ -178,6 +191,15 @@ fn spawn_hud(mut commands: Commands) {
                             TextColor(Color::WHITE),
                         ));
                         left.spawn((
+                            MissionNameText,
+                            Text::new(""),
+                            TextFont {
+                                font_size: 14.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.8, 0.6, 0.3)), // Rust/amber
+                        ));
+                        left.spawn((
                             WaveText,
                             Text::new("WAVE 1"),
                             TextFont {
@@ -185,6 +207,24 @@ fn spawn_hud(mut commands: Commands) {
                                 ..default()
                             },
                             TextColor(Color::srgb(0.6, 0.6, 0.6)),
+                        ));
+                        left.spawn((
+                            ObjectiveText,
+                            Text::new(""),
+                            TextFont {
+                                font_size: 12.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.5, 0.8, 0.5)), // Green for objectives
+                        ));
+                        left.spawn((
+                            SoulsText,
+                            Text::new(""),
+                            TextFont {
+                                font_size: 12.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.4, 0.7, 1.0)), // Blue for souls
                         ));
                     });
 
@@ -663,16 +703,69 @@ fn update_combo_kills(
 
 /// Update wave display (with stage info)
 fn update_wave_display(
-    spawning: Res<crate::systems::spawning::WaveManager>,
+    campaign: Res<CampaignState>,
     mut query: Query<&mut Text, With<WaveText>>,
 ) {
     for mut text in query.iter_mut() {
-        if spawning.boss_active {
-            **text = format!("STAGE {} - BOSS", spawning.current_stage);
-        } else if spawning.stage_complete {
-            **text = format!("STAGE {} COMPLETE!", spawning.current_stage);
+        if let Some(mission) = campaign.current_mission() {
+            if campaign.is_boss_wave() {
+                **text = format!("WAVE {}/{} - BOSS", campaign.current_wave, mission.enemy_waves + 1);
+            } else {
+                **text = format!("WAVE {}/{}", campaign.current_wave, mission.enemy_waves + 1);
+            }
         } else {
-            **text = format!("STAGE {} - WAVE {}/{}", spawning.current_stage, spawning.wave, spawning.waves_per_stage);
+            **text = format!("WAVE {}", campaign.current_wave);
+        }
+    }
+}
+
+/// Update mission info display
+fn update_mission_display(
+    campaign: Res<CampaignState>,
+    score: Res<ScoreSystem>,
+    mut mission_query: Query<&mut Text, (With<MissionNameText>, Without<ObjectiveText>, Without<SoulsText>)>,
+    mut objective_query: Query<(&mut Text, &mut TextColor), (With<ObjectiveText>, Without<MissionNameText>, Without<SoulsText>)>,
+    mut souls_query: Query<&mut Text, (With<SoulsText>, Without<MissionNameText>, Without<ObjectiveText>)>,
+) {
+    // Update mission name
+    for mut text in mission_query.iter_mut() {
+        if let Some(mission) = campaign.current_mission() {
+            **text = format!("M{}: {} - {}", campaign.mission_number(), mission.name, campaign.act.name());
+        } else {
+            **text = String::new();
+        }
+    }
+
+    // Update objective
+    for (mut text, mut color) in objective_query.iter_mut() {
+        if let Some(mission) = campaign.current_mission() {
+            if campaign.primary_complete {
+                **text = format!("✓ {}", mission.primary_objective);
+                color.0 = Color::srgb(0.3, 1.0, 0.3); // Bright green when complete
+            } else {
+                **text = format!("◯ {}", mission.primary_objective);
+                color.0 = Color::srgb(0.5, 0.8, 0.5); // Dim green when incomplete
+            }
+        } else {
+            **text = String::new();
+        }
+    }
+
+    // Update souls liberated
+    for mut text in souls_query.iter_mut() {
+        if campaign.in_mission {
+            let bonus = if let Some(mission) = campaign.current_mission() {
+                if campaign.mission_souls >= mission.souls_to_liberate {
+                    " ✓"
+                } else {
+                    ""
+                }
+            } else {
+                ""
+            };
+            **text = format!("SOULS LIBERATED: {}{}", score.souls_liberated, bonus);
+        } else {
+            **text = String::new();
         }
     }
 }

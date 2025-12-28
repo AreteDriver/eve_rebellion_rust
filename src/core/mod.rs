@@ -10,8 +10,10 @@ pub mod game_state;
 pub mod resources;
 pub mod events;
 pub mod constants;
+pub mod campaign;
 
 pub use game_state::*;
 pub use resources::*;
 pub use events::*;
 pub use constants::*;
+pub use campaign::*;

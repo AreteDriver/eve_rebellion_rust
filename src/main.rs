@@ -15,6 +15,8 @@ mod assets;
 use core::{
     GameState, GameEventsPlugin, ScoreSystem, BerserkSystem, GameProgress,
     InputConfig, AudioSettings, Difficulty, SelectedShip, CurrentStage, ShipUnlocks,
+    CampaignState, MissionStartEvent, MissionCompleteEvent, WaveCompleteEvent,
+    BossSpawnEvent, ActCompleteEvent,
 };
 use entities::EntitiesPlugin;
 use systems::SystemsPlugin;
@@ -48,6 +50,14 @@ fn main() {
         .init_resource::<SelectedShip>()
         .init_resource::<CurrentStage>()
         .init_resource::<ShipUnlocks>()
+        .init_resource::<CampaignState>()
+
+        // Campaign events
+        .add_event::<MissionStartEvent>()
+        .add_event::<MissionCompleteEvent>()
+        .add_event::<WaveCompleteEvent>()
+        .add_event::<BossSpawnEvent>()
+        .add_event::<ActCompleteEvent>()
 
         // Game plugins
         .add_plugins((

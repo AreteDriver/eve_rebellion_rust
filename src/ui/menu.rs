@@ -64,6 +64,30 @@ impl Plugin for MenuPlugin {
             )
             .add_systems(OnExit(GameState::GameOver), despawn_menu::<GameOverRoot>)
 
+            // Boss Intro
+            .add_systems(OnEnter(GameState::BossIntro), spawn_boss_intro)
+            .add_systems(
+                Update,
+                boss_intro_update.run_if(in_state(GameState::BossIntro)),
+            )
+            .add_systems(OnExit(GameState::BossIntro), despawn_menu::<BossIntroRoot>)
+
+            // Stage Complete
+            .add_systems(OnEnter(GameState::StageComplete), spawn_stage_complete)
+            .add_systems(
+                Update,
+                stage_complete_input.run_if(in_state(GameState::StageComplete)),
+            )
+            .add_systems(OnExit(GameState::StageComplete), despawn_menu::<StageCompleteRoot>)
+
+            // Victory (Campaign Complete)
+            .add_systems(OnEnter(GameState::Victory), spawn_victory_screen)
+            .add_systems(
+                Update,
+                victory_input.run_if(in_state(GameState::Victory)),
+            )
+            .add_systems(OnExit(GameState::Victory), despawn_menu::<VictoryRoot>)
+
             // Init menu selection resource
             .init_resource::<MenuSelection>();
     }
@@ -103,6 +127,15 @@ struct PauseMenuRoot;
 
 #[derive(Component)]
 struct GameOverRoot;
+
+#[derive(Component)]
+struct BossIntroRoot;
+
+#[derive(Component)]
+struct StageCompleteRoot;
+
+#[derive(Component)]
+struct VictoryRoot;
 
 /// Menu item that can be selected
 #[derive(Component)]
@@ -798,6 +831,376 @@ fn game_over_input(
 
     if keyboard.just_pressed(KeyCode::Escape) || joystick.back() {
         score.reset_game();
+        next_state.set(GameState::MainMenu);
+    }
+}
+
+// ============================================================================
+// Boss Intro Screen
+// ============================================================================
+
+fn spawn_boss_intro(
+    mut commands: Commands,
+    campaign: Res<CampaignState>,
+) {
+    let (boss_name, boss_title) = if let Some(mission) = campaign.current_mission() {
+        (mission.boss.name(), mission.name)
+    } else {
+        ("UNKNOWN", "???")
+    };
+
+    commands
+        .spawn((
+            BossIntroRoot,
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(15.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)),
+        ))
+        .with_children(|parent| {
+            // Warning text
+            parent.spawn((
+                Text::new("WARNING"),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.3, 0.3)),
+            ));
+
+            parent.spawn(Node {
+                height: Val::Px(20.0),
+                ..default()
+            });
+
+            // Boss name with dramatic reveal
+            parent.spawn((
+                Text::new(boss_name),
+                TextFont {
+                    font_size: 64.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.85, 0.2)), // Gold for Amarr
+            ));
+
+            // Boss mission title
+            parent.spawn((
+                Text::new(boss_title),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.8, 0.6, 0.2)),
+            ));
+
+            parent.spawn(Node {
+                height: Val::Px(40.0),
+                ..default()
+            });
+
+            // Flavor text
+            parent.spawn((
+                Text::new("Prepare for battle..."),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.6, 0.6, 0.6)),
+            ));
+        });
+}
+
+fn boss_intro_update(
+    time: Res<Time>,
+    mut timer: Local<f32>,
+) {
+    // The actual state transition happens in systems/campaign.rs boss_intro_sequence
+    // This just tracks time for potential animation effects
+    *timer += time.delta_secs();
+}
+
+// ============================================================================
+// Stage Complete Screen
+// ============================================================================
+
+fn spawn_stage_complete(
+    mut commands: Commands,
+    campaign: Res<CampaignState>,
+    score: Res<ScoreSystem>,
+) {
+    let mission_name = campaign.current_mission()
+        .map(|m| m.name)
+        .unwrap_or("MISSION");
+
+    let bonus_text = if campaign.bonus_complete {
+        "BONUS OBJECTIVE COMPLETE!"
+    } else if let Some(m) = campaign.current_mission() {
+        m.bonus_objective.unwrap_or("")
+    } else {
+        ""
+    };
+
+    commands
+        .spawn((
+            StageCompleteRoot,
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(15.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.05, 0.0, 0.9)),
+        ))
+        .with_children(|parent| {
+            // Victory header
+            parent.spawn((
+                Text::new("MISSION COMPLETE"),
+                TextFont {
+                    font_size: 56.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.3, 1.0, 0.3)),
+            ));
+
+            parent.spawn((
+                Text::new(mission_name),
+                TextFont {
+                    font_size: 28.0,
+                    ..default()
+                },
+                TextColor(COLOR_MINMATAR),
+            ));
+
+            parent.spawn(Node {
+                height: Val::Px(20.0),
+                ..default()
+            });
+
+            // Stats
+            parent.spawn((
+                Text::new(format!("Score: {}", score.score)),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+
+            parent.spawn((
+                Text::new(format!("Souls Liberated: {}", campaign.mission_souls)),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.4, 0.8, 1.0)),
+            ));
+
+            parent.spawn((
+                Text::new(format!("Time: {:.1}s", campaign.mission_timer)),
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.6, 0.6, 0.6)),
+            ));
+
+            // Bonus objective
+            if !bonus_text.is_empty() {
+                parent.spawn(Node {
+                    height: Val::Px(10.0),
+                    ..default()
+                });
+
+                let bonus_color = if campaign.bonus_complete {
+                    Color::srgb(1.0, 0.85, 0.2) // Gold
+                } else {
+                    Color::srgb(0.5, 0.5, 0.5) // Gray
+                };
+
+                parent.spawn((
+                    Text::new(bonus_text),
+                    TextFont {
+                        font_size: 16.0,
+                        ..default()
+                    },
+                    TextColor(bonus_color),
+                ));
+            }
+
+            parent.spawn(Node {
+                height: Val::Px(30.0),
+                ..default()
+            });
+
+            // Continue prompt
+            parent.spawn((
+                Text::new("Press SPACE to continue"),
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.7, 0.7, 0.7)),
+            ));
+        });
+}
+
+fn stage_complete_input(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    joystick: Res<JoystickState>,
+    mut campaign: ResMut<CampaignState>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if keyboard.just_pressed(KeyCode::Space)
+        || keyboard.just_pressed(KeyCode::Enter)
+        || joystick.confirm()
+    {
+        // Advance to next mission
+        if campaign.complete_mission() {
+            // More missions available
+            next_state.set(GameState::Playing);
+        } else {
+            // Campaign complete!
+            next_state.set(GameState::Victory);
+        }
+    }
+
+    if keyboard.just_pressed(KeyCode::Escape) || joystick.back() {
+        next_state.set(GameState::MainMenu);
+    }
+}
+
+// ============================================================================
+// Victory Screen (Campaign Complete)
+// ============================================================================
+
+fn spawn_victory_screen(
+    mut commands: Commands,
+    score: Res<ScoreSystem>,
+    campaign: Res<CampaignState>,
+) {
+    commands
+        .spawn((
+            VictoryRoot,
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(15.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.95)),
+        ))
+        .with_children(|parent| {
+            // Victory header
+            parent.spawn((
+                Text::new("LIBERATION COMPLETE"),
+                TextFont {
+                    font_size: 64.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.85, 0.2)), // Gold
+            ));
+
+            parent.spawn((
+                Text::new("The Amarr Empire Has Fallen"),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(COLOR_MINMATAR),
+            ));
+
+            parent.spawn(Node {
+                height: Val::Px(30.0),
+                ..default()
+            });
+
+            // Campaign stats
+            parent.spawn((
+                Text::new(format!("Final Score: {}", score.score)),
+                TextFont {
+                    font_size: 32.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+
+            parent.spawn((
+                Text::new(format!("Total Souls Liberated: {}", score.souls_liberated)),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.4, 0.8, 1.0)),
+            ));
+
+            parent.spawn((
+                Text::new(format!("Missions Completed: {}", CampaignState::total_missions())),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.3, 1.0, 0.3)),
+            ));
+
+            parent.spawn(Node {
+                height: Val::Px(30.0),
+                ..default()
+            });
+
+            // Minmatar catchphrase
+            parent.spawn((
+                Text::new("In Rust We Trust - For Freedom! For the Republic!"),
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(COLOR_MINMATAR),
+            ));
+
+            parent.spawn(Node {
+                height: Val::Px(40.0),
+                ..default()
+            });
+
+            parent.spawn((
+                Text::new("Press SPACE to return to menu"),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.6, 0.6, 0.6)),
+            ));
+        });
+}
+
+fn victory_input(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    joystick: Res<JoystickState>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut score: ResMut<ScoreSystem>,
+    mut campaign: ResMut<CampaignState>,
+) {
+    if keyboard.just_pressed(KeyCode::Space)
+        || keyboard.just_pressed(KeyCode::Enter)
+        || joystick.confirm()
+        || keyboard.just_pressed(KeyCode::Escape)
+        || joystick.back()
+    {
+        // Reset for new game
+        score.reset_game();
+        *campaign = CampaignState::default();
         next_state.set(GameState::MainMenu);
     }
 }
