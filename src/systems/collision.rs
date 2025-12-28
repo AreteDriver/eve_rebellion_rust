@@ -2,9 +2,9 @@
 //!
 //! Handles all collision between entities.
 
-use bevy::prelude::*;
 use crate::core::*;
 use crate::entities::*;
+use bevy::prelude::*;
 
 /// Collision plugin
 pub struct CollisionPlugin;
@@ -16,7 +16,8 @@ impl Plugin for CollisionPlugin {
             (
                 player_projectile_enemy_collision,
                 enemy_projectile_player_collision,
-            ).run_if(in_state(GameState::Playing)),
+            )
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -67,7 +68,10 @@ fn player_projectile_enemy_collision(
 
                     // Check for berserk activation
                     if berserk.on_kill_at_distance(player_distance) {
-                        info!("BERSERK MODE ACTIVATED! {} proximity kills!", berserk.kills_to_activate);
+                        info!(
+                            "BERSERK MODE ACTIVATED! {} proximity kills!",
+                            berserk.kills_to_activate
+                        );
                     }
 
                     // Send events
@@ -96,11 +100,7 @@ fn player_projectile_enemy_collision(
                     }
 
                     // Spawn liberation pods
-                    spawn_liberation_pods(
-                        &mut commands,
-                        enemy_pos,
-                        enemy_stats.liberation_value,
-                    );
+                    spawn_liberation_pods(&mut commands, enemy_pos, enemy_stats.liberation_value);
 
                     // 30% chance to drop powerup (100% for bosses)
                     let drop_chance = if enemy_stats.is_boss { 1.0 } else { 0.30 };
@@ -122,13 +122,24 @@ fn player_projectile_enemy_collision(
 fn enemy_projectile_player_collision(
     mut commands: Commands,
     projectile_query: Query<(Entity, &Transform, &ProjectileDamage), With<EnemyProjectile>>,
-    mut player_query: Query<(&Transform, &mut ShipStats, &Hitbox, &PowerupEffects, &super::ManeuverState), With<Player>>,
+    mut player_query: Query<
+        (
+            &Transform,
+            &mut ShipStats,
+            &Hitbox,
+            &PowerupEffects,
+            &super::ManeuverState,
+        ),
+        With<Player>,
+    >,
     mut score: ResMut<ScoreSystem>,
     mut damage_events: EventWriter<PlayerDamagedEvent>,
     mut screen_shake: ResMut<super::effects::ScreenShake>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    let Ok((player_transform, mut player_stats, hitbox, powerups, maneuver)) = player_query.get_single_mut() else {
+    let Ok((player_transform, mut player_stats, hitbox, powerups, maneuver)) =
+        player_query.get_single_mut()
+    else {
         return;
     };
 

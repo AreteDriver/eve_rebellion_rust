@@ -6,8 +6,8 @@
 use bevy::prelude::*;
 use bevy::render::render_asset::RenderAssetUsages;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 
 use crate::core::*;
 
@@ -55,20 +55,20 @@ impl ShipSpriteCache {
 /// Ships to preload
 const SHIPS_TO_LOAD: &[u32] = &[
     // Minmatar
-    587,  // Rifter
-    585,  // Slasher
-    586,  // Probe
-    598,  // Breacher
+    587, // Rifter
+    585, // Slasher
+    586, // Probe
+    598, // Breacher
     // Amarr
-    597,  // Punisher
-    589,  // Executioner
-    591,  // Tormentor
+    597, // Punisher
+    589, // Executioner
+    591, // Tormentor
     // Caldari
-    603,  // Merlin
-    602,  // Kestrel
+    603, // Merlin
+    602, // Kestrel
     // Gallente
-    593,  // Tristan
-    594,  // Incursus
+    593, // Tristan
+    594, // Incursus
 ];
 
 /// Setup the sprite cache directory
@@ -89,10 +89,7 @@ fn setup_sprite_cache(mut cache: ResMut<ShipSpriteCache>) {
 }
 
 /// Start loading ship sprites
-fn start_loading_sprites(
-    mut cache: ResMut<ShipSpriteCache>,
-    mut images: ResMut<Assets<Image>>,
-) {
+fn start_loading_sprites(mut cache: ResMut<ShipSpriteCache>, mut images: ResMut<Assets<Image>>) {
     // Ensure cache_dir is set (in case setup hasn't run yet)
     if cache.cache_dir.as_os_str().is_empty() {
         cache.cache_dir = dirs::cache_dir()
@@ -218,7 +215,10 @@ fn download_sprites(type_ids: Vec<u32>, cache_dir: PathBuf) {
 }
 
 /// Download a single image (blocking)
-fn download_image(url: &str, path: &PathBuf) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+fn download_image(
+    url: &str,
+    path: &PathBuf,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let response = reqwest::blocking::get(url)?;
 
     if !response.status().is_success() {

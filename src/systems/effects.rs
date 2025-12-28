@@ -2,8 +2,8 @@
 //!
 //! Starfield, explosions, particle effects, screen shake.
 
-use bevy::prelude::*;
 use crate::core::*;
+use bevy::prelude::*;
 
 /// Effects plugin
 pub struct EffectsPlugin;
@@ -19,7 +19,8 @@ impl Plugin for EffectsPlugin {
                     update_explosions,
                     update_screen_shake,
                     handle_explosion_events,
-                ).run_if(in_state(GameState::Playing)),
+                )
+                    .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnExit(GameState::Playing), cleanup_effects);
     }
@@ -43,9 +44,9 @@ fn spawn_starfield(mut commands: Commands) {
     // Spawn stars in 3 layers (parallax)
     for layer in 0..3 {
         let count = match layer {
-            0 => 30,  // Far stars (dim, slow)
-            1 => 50,  // Mid stars
-            _ => 70,  // Near stars (bright, fast)
+            0 => 30, // Far stars (dim, slow)
+            1 => 50, // Mid stars
+            _ => 70, // Near stars (bright, fast)
         };
 
         let (speed, size, alpha) = match layer {
@@ -72,10 +73,7 @@ fn spawn_starfield(mut commands: Commands) {
 }
 
 /// Scroll stars downward
-fn update_starfield(
-    time: Res<Time>,
-    mut query: Query<(&mut Transform, &Star)>,
-) {
+fn update_starfield(time: Res<Time>, mut query: Query<(&mut Transform, &Star)>) {
     let dt = time.delta_secs();
 
     for (mut transform, star) in query.iter_mut() {
@@ -102,10 +100,7 @@ pub struct ExplosionParticle {
 }
 
 /// Handle explosion events
-fn handle_explosion_events(
-    mut commands: Commands,
-    mut events: EventReader<ExplosionEvent>,
-) {
+fn handle_explosion_events(mut commands: Commands, mut events: EventReader<ExplosionEvent>) {
     for event in events.read() {
         spawn_explosion(&mut commands, event.position, &event.size, event.color);
     }

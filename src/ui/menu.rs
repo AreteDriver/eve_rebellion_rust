@@ -3,10 +3,10 @@
 //! Complete menu flow: Title -> Difficulty -> Ship -> Playing
 //! Supports keyboard, mouse, and joystick input.
 
-use bevy::prelude::*;
 use crate::core::*;
-use crate::systems::JoystickState;
 use crate::games::ActiveModule;
+use crate::systems::JoystickState;
+use bevy::prelude::*;
 
 /// Menu plugin
 pub struct MenuPlugin;
@@ -21,7 +21,6 @@ impl Plugin for MenuPlugin {
                 loading_progress.run_if(in_state(GameState::Loading)),
             )
             .add_systems(OnExit(GameState::Loading), despawn_menu::<LoadingRoot>)
-
             // Main Menu
             .add_systems(OnEnter(GameState::MainMenu), spawn_main_menu)
             .add_systems(
@@ -30,16 +29,20 @@ impl Plugin for MenuPlugin {
                     .run_if(in_state(GameState::MainMenu)),
             )
             .add_systems(OnExit(GameState::MainMenu), despawn_menu::<MainMenuRoot>)
-
             // Difficulty Select
             .add_systems(OnEnter(GameState::DifficultySelect), spawn_difficulty_menu)
             .add_systems(
                 Update,
-                (difficulty_menu_input, update_menu_selection::<DifficultyMenuRoot>)
+                (
+                    difficulty_menu_input,
+                    update_menu_selection::<DifficultyMenuRoot>,
+                )
                     .run_if(in_state(GameState::DifficultySelect)),
             )
-            .add_systems(OnExit(GameState::DifficultySelect), despawn_menu::<DifficultyMenuRoot>)
-
+            .add_systems(
+                OnExit(GameState::DifficultySelect),
+                despawn_menu::<DifficultyMenuRoot>,
+            )
             // Ship Select
             .add_systems(OnEnter(GameState::ShipSelect), spawn_ship_menu)
             .add_systems(
@@ -48,26 +51,18 @@ impl Plugin for MenuPlugin {
                     .run_if(in_state(GameState::ShipSelect)),
             )
             .add_systems(OnExit(GameState::ShipSelect), despawn_menu::<ShipMenuRoot>)
-
             // Pause Menu
             .add_systems(OnEnter(GameState::Paused), spawn_pause_menu)
-            .add_systems(
-                Update,
-                pause_menu_input.run_if(in_state(GameState::Paused)),
-            )
+            .add_systems(Update, pause_menu_input.run_if(in_state(GameState::Paused)))
             .add_systems(OnExit(GameState::Paused), despawn_menu::<PauseMenuRoot>)
-
             // Game Over (Death Screen with corpse and debris)
             .add_systems(OnEnter(GameState::GameOver), spawn_death_screen)
             .add_systems(
                 Update,
-                (
-                    update_death_screen_animation,
-                    death_screen_input,
-                ).run_if(in_state(GameState::GameOver)),
+                (update_death_screen_animation, death_screen_input)
+                    .run_if(in_state(GameState::GameOver)),
             )
             .add_systems(OnExit(GameState::GameOver), despawn_death_screen)
-
             // Boss Intro
             .add_systems(OnEnter(GameState::BossIntro), spawn_boss_intro)
             .add_systems(
@@ -75,26 +70,23 @@ impl Plugin for MenuPlugin {
                 boss_intro_update.run_if(in_state(GameState::BossIntro)),
             )
             .add_systems(OnExit(GameState::BossIntro), despawn_menu::<BossIntroRoot>)
-
             // Stage Complete
             .add_systems(OnEnter(GameState::StageComplete), spawn_stage_complete)
             .add_systems(
                 Update,
                 stage_complete_input.run_if(in_state(GameState::StageComplete)),
             )
-            .add_systems(OnExit(GameState::StageComplete), despawn_menu::<StageCompleteRoot>)
-
+            .add_systems(
+                OnExit(GameState::StageComplete),
+                despawn_menu::<StageCompleteRoot>,
+            )
             // Victory (Campaign Complete)
             .add_systems(OnEnter(GameState::Victory), spawn_victory_screen)
             .add_systems(
                 Update,
-                (
-                    victory_input,
-                    update_victory_particles,
-                ).run_if(in_state(GameState::Victory)),
+                (victory_input, update_victory_particles).run_if(in_state(GameState::Victory)),
             )
             .add_systems(OnExit(GameState::Victory), despawn_menu::<VictoryRoot>)
-
             // Init menu selection resource
             .init_resource::<MenuSelection>();
     }
@@ -178,7 +170,9 @@ struct DeathSelection {
 
 impl Default for DeathSelection {
     fn default() -> Self {
-        Self { selected: DeathAction::Retry }
+        Self {
+            selected: DeathAction::Retry,
+        }
     }
 }
 
@@ -336,8 +330,8 @@ fn main_menu_input(
     // Navigation
     let nav = get_nav_input(&keyboard, &joystick);
     if nav != 0 && selection.cooldown <= 0.0 {
-        selection.index = (selection.index as i32 + nav)
-            .rem_euclid(selection.total as i32) as usize;
+        selection.index =
+            (selection.index as i32 + nav).rem_euclid(selection.total as i32) as usize;
         selection.cooldown = MENU_NAV_COOLDOWN;
     }
 
@@ -356,7 +350,9 @@ fn main_menu_input(
                 next_state.set(GameState::FactionSelect);
             }
             2 => {} // Options - TODO
-            3 => { exit.send(AppExit::Success); }
+            3 => {
+                exit.send(AppExit::Success);
+            }
             _ => {}
         }
     }
@@ -485,14 +481,18 @@ fn difficulty_menu_input(
 
     let nav = get_nav_input(&keyboard, &joystick);
     if nav != 0 && selection.cooldown <= 0.0 {
-        selection.index = (selection.index as i32 + nav)
-            .rem_euclid(selection.total as i32) as usize;
+        selection.index =
+            (selection.index as i32 + nav).rem_euclid(selection.total as i32) as usize;
         selection.cooldown = MENU_NAV_COOLDOWN;
     }
 
     if is_confirm(&keyboard, &joystick) {
         *difficulty = Difficulty::all()[selection.index.min(3)];
-        info!("Selected difficulty: {} - {}", difficulty.name(), difficulty.tagline());
+        info!(
+            "Selected difficulty: {} - {}",
+            difficulty.name(),
+            difficulty.tagline()
+        );
         next_state.set(GameState::ShipSelect);
     }
 
@@ -539,7 +539,11 @@ fn spawn_ship_menu(
             ));
 
             parent.spawn((
-                Text::new(format!("Difficulty: {} - \"{}\"", difficulty.name(), difficulty.tagline())),
+                Text::new(format!(
+                    "Difficulty: {} - \"{}\"",
+                    difficulty.name(),
+                    difficulty.tagline()
+                )),
                 TextFont {
                     font_size: 16.0,
                     ..default()
@@ -576,9 +580,21 @@ fn spawn_ship_menu(
 
 fn spawn_ship_item(parent: &mut ChildBuilder, ship: MinmatarShip, index: usize, is_unlocked: bool) {
     // Colors depend on unlock state
-    let name_color = if is_unlocked { COLOR_MINMATAR } else { Color::srgb(0.4, 0.4, 0.4) };
-    let desc_color = if is_unlocked { Color::srgb(0.5, 0.5, 0.5) } else { Color::srgb(0.3, 0.3, 0.3) };
-    let special_color = if is_unlocked { Color::srgb(0.4, 0.7, 0.9) } else { Color::srgb(0.3, 0.3, 0.3) };
+    let name_color = if is_unlocked {
+        COLOR_MINMATAR
+    } else {
+        Color::srgb(0.4, 0.4, 0.4)
+    };
+    let desc_color = if is_unlocked {
+        Color::srgb(0.5, 0.5, 0.5)
+    } else {
+        Color::srgb(0.3, 0.3, 0.3)
+    };
+    let special_color = if is_unlocked {
+        Color::srgb(0.4, 0.7, 0.9)
+    } else {
+        Color::srgb(0.3, 0.3, 0.3)
+    };
     let bg_color = if is_unlocked {
         Color::srgba(0.1, 0.1, 0.1, 0.9)
     } else {
@@ -607,7 +623,8 @@ fn spawn_ship_item(parent: &mut ChildBuilder, ship: MinmatarShip, index: usize, 
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::FlexStart,
                 ..default()
-            }).with_children(|left| {
+            })
+            .with_children(|left| {
                 // Ship name with class
                 let name_text = if ship.requires_unlock() {
                     format!("{} [{}]", ship.name(), ship.ship_class())
@@ -643,7 +660,10 @@ fn spawn_ship_item(parent: &mut ChildBuilder, ship: MinmatarShip, index: usize, 
                     ));
                 } else {
                     left.spawn((
-                        Text::new(format!("LOCKED - Complete Act {} to unlock", ship.unlock_act())),
+                        Text::new(format!(
+                            "LOCKED - Complete Act {} to unlock",
+                            ship.unlock_act()
+                        )),
                         TextFont {
                             font_size: 11.0,
                             ..default()
@@ -666,7 +686,8 @@ fn spawn_ship_item(parent: &mut ChildBuilder, ship: MinmatarShip, index: usize, 
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::FlexEnd,
                 ..default()
-            }).with_children(|right| {
+            })
+            .with_children(|right| {
                 let stat_alpha = if is_unlocked { 1.0 } else { 0.4 };
                 right.spawn((
                     Text::new(format!("SPD: {:.0}%", ship.speed_mult() * 100.0)),
@@ -709,8 +730,8 @@ fn ship_menu_input(
 
     let nav = get_nav_input(&keyboard, &joystick);
     if nav != 0 && selection.cooldown <= 0.0 {
-        selection.index = (selection.index as i32 + nav)
-            .rem_euclid(selection.total as i32) as usize;
+        selection.index =
+            (selection.index as i32 + nav).rem_euclid(selection.total as i32) as usize;
         selection.cooldown = MENU_NAV_COOLDOWN;
     }
 
@@ -723,7 +744,11 @@ fn ship_menu_input(
                 info!("Selected ship: {} ({})", ship.name(), ship.ship_class());
                 next_state.set(GameState::Playing);
             } else {
-                info!("Ship {} is locked - complete Act {} to unlock", ship.name(), ship.unlock_act());
+                info!(
+                    "Ship {} is locked - complete Act {} to unlock",
+                    ship.name(),
+                    ship.unlock_act()
+                );
             }
         }
     }
@@ -808,19 +833,16 @@ fn pause_menu_input(
 const COLOR_EVE_AMBER: Color = Color::srgb(0.83, 0.66, 0.29);
 const COLOR_EVE_AMBER_BRIGHT: Color = Color::srgb(1.0, 0.8, 0.0);
 
-fn spawn_death_screen(
-    mut commands: Commands,
-    score: Res<ScoreSystem>,
-) {
+fn spawn_death_screen(mut commands: Commands, score: Res<ScoreSystem>) {
     // Initialize selection resource
     commands.insert_resource(DeathSelection::default());
 
     // Spawn debris field (background sprites)
     let debris_colors = [
-        Color::srgb(0.31, 0.24, 0.20),  // Rusty brown
-        Color::srgb(0.24, 0.24, 0.25),  // Dark gray
-        Color::srgb(0.35, 0.27, 0.22),  // Warm rust
-        Color::srgb(0.20, 0.20, 0.22),  // Cold gray
+        Color::srgb(0.31, 0.24, 0.20), // Rusty brown
+        Color::srgb(0.24, 0.24, 0.25), // Dark gray
+        Color::srgb(0.35, 0.27, 0.22), // Warm rust
+        Color::srgb(0.20, 0.20, 0.22), // Cold gray
     ];
 
     for i in 0..25 {
@@ -832,10 +854,7 @@ fn spawn_death_screen(
         commands.spawn((
             GameOverRoot,
             DeathDebris {
-                velocity: Vec2::new(
-                    (fastrand::f32() - 0.5) * 8.0,
-                    (fastrand::f32() - 0.5) * 5.0,
-                ),
+                velocity: Vec2::new((fastrand::f32() - 0.5) * 8.0, (fastrand::f32() - 0.5) * 5.0),
                 spin: (fastrand::f32() - 0.5) * 0.5,
             },
             Sprite {
@@ -843,8 +862,9 @@ fn spawn_death_screen(
                 custom_size: Some(Vec2::new(size * 2.0, size)),
                 ..default()
             },
-            Transform::from_xyz(x, y, 1.0)
-                .with_rotation(Quat::from_rotation_z(fastrand::f32() * std::f32::consts::TAU)),
+            Transform::from_xyz(x, y, 1.0).with_rotation(Quat::from_rotation_z(
+                fastrand::f32() * std::f32::consts::TAU,
+            )),
         ));
     }
 
@@ -852,10 +872,7 @@ fn spawn_death_screen(
     commands.spawn((
         GameOverRoot,
         DeathCorpse {
-            velocity: Vec2::new(
-                (fastrand::f32() - 0.5) * 3.0,
-                (fastrand::f32() - 0.5) * 2.0,
-            ),
+            velocity: Vec2::new((fastrand::f32() - 0.5) * 3.0, (fastrand::f32() - 0.5) * 2.0),
             spin: (fastrand::f32() - 0.5) * 0.2,
         },
         Sprite {
@@ -894,7 +911,10 @@ fn spawn_death_screen(
             ));
 
             // Spacer
-            parent.spawn(Node { height: Val::Px(80.0), ..default() });
+            parent.spawn(Node {
+                height: Val::Px(80.0),
+                ..default()
+            });
 
             // Final score
             parent.spawn((
@@ -931,65 +951,79 @@ fn spawn_death_screen(
             }
 
             // Spacer
-            parent.spawn(Node { height: Val::Px(50.0), ..default() });
-
-            // Button row
             parent.spawn(Node {
-                flex_direction: FlexDirection::Row,
-                column_gap: Val::Px(40.0),
+                height: Val::Px(50.0),
                 ..default()
-            }).with_children(|row| {
-                // RETRY button
-                row.spawn((
-                    DeathButton { action: DeathAction::Retry },
-                    Node {
-                        width: Val::Px(150.0),
-                        height: Val::Px(50.0),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        border: UiRect::all(Val::Px(2.0)),
-                        ..default()
-                    },
-                    BorderColor(COLOR_EVE_AMBER),
-                    BackgroundColor(Color::srgba(0.83, 0.66, 0.29, 0.1)),
-                )).with_children(|btn| {
-                    btn.spawn((
-                        Text::new("RETRY"),
-                        TextFont {
-                            font_size: 24.0,
-                            ..default()
-                        },
-                        TextColor(COLOR_EVE_AMBER),
-                    ));
-                });
-
-                // EXIT button
-                row.spawn((
-                    DeathButton { action: DeathAction::Exit },
-                    Node {
-                        width: Val::Px(150.0),
-                        height: Val::Px(50.0),
-                        justify_content: JustifyContent::Center,
-                        align_items: AlignItems::Center,
-                        border: UiRect::all(Val::Px(2.0)),
-                        ..default()
-                    },
-                    BorderColor(COLOR_EVE_AMBER),
-                    BackgroundColor(Color::NONE),
-                )).with_children(|btn| {
-                    btn.spawn((
-                        Text::new("EXIT"),
-                        TextFont {
-                            font_size: 24.0,
-                            ..default()
-                        },
-                        TextColor(COLOR_EVE_AMBER),
-                    ));
-                });
             });
 
+            // Button row
+            parent
+                .spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(40.0),
+                    ..default()
+                })
+                .with_children(|row| {
+                    // RETRY button
+                    row.spawn((
+                        DeathButton {
+                            action: DeathAction::Retry,
+                        },
+                        Node {
+                            width: Val::Px(150.0),
+                            height: Val::Px(50.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        BorderColor(COLOR_EVE_AMBER),
+                        BackgroundColor(Color::srgba(0.83, 0.66, 0.29, 0.1)),
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn((
+                            Text::new("RETRY"),
+                            TextFont {
+                                font_size: 24.0,
+                                ..default()
+                            },
+                            TextColor(COLOR_EVE_AMBER),
+                        ));
+                    });
+
+                    // EXIT button
+                    row.spawn((
+                        DeathButton {
+                            action: DeathAction::Exit,
+                        },
+                        Node {
+                            width: Val::Px(150.0),
+                            height: Val::Px(50.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        BorderColor(COLOR_EVE_AMBER),
+                        BackgroundColor(Color::NONE),
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn((
+                            Text::new("EXIT"),
+                            TextFont {
+                                font_size: 24.0,
+                                ..default()
+                            },
+                            TextColor(COLOR_EVE_AMBER),
+                        ));
+                    });
+                });
+
             // Spacer
-            parent.spawn(Node { height: Val::Px(30.0), ..default() });
+            parent.spawn(Node {
+                height: Val::Px(30.0),
+                ..default()
+            });
 
             // Flavor text
             parent.spawn((
@@ -1105,10 +1139,7 @@ fn death_screen_input(
     }
 }
 
-fn despawn_death_screen(
-    mut commands: Commands,
-    query: Query<Entity, With<GameOverRoot>>,
-) {
+fn despawn_death_screen(mut commands: Commands, query: Query<Entity, With<GameOverRoot>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
@@ -1119,10 +1150,7 @@ fn despawn_death_screen(
 // Boss Intro Screen
 // ============================================================================
 
-fn spawn_boss_intro(
-    mut commands: Commands,
-    campaign: Res<CampaignState>,
-) {
+fn spawn_boss_intro(mut commands: Commands, campaign: Res<CampaignState>) {
     let (boss_name, boss_title) = if let Some(mission) = campaign.current_mission() {
         (mission.boss.name(), mission.name)
     } else {
@@ -1196,10 +1224,7 @@ fn spawn_boss_intro(
         });
 }
 
-fn boss_intro_update(
-    time: Res<Time>,
-    mut timer: Local<f32>,
-) {
+fn boss_intro_update(time: Res<Time>, mut timer: Local<f32>) {
     // The actual state transition happens in systems/campaign.rs boss_intro_sequence
     // This just tracks time for potential animation effects
     *timer += time.delta_secs();
@@ -1214,7 +1239,8 @@ fn spawn_stage_complete(
     campaign: Res<CampaignState>,
     score: Res<ScoreSystem>,
 ) {
-    let mission_name = campaign.current_mission()
+    let mission_name = campaign
+        .current_mission()
         .map(|m| m.name)
         .unwrap_or("MISSION");
 
@@ -1499,7 +1525,10 @@ fn spawn_victory_screen(
                     ));
 
                     stats.spawn((
-                        Text::new(format!("Missions Completed: {}/13", CampaignState::total_missions())),
+                        Text::new(format!(
+                            "Missions Completed: {}/13",
+                            CampaignState::total_missions()
+                        )),
                         TextFont {
                             font_size: 20.0,
                             ..default()
@@ -1711,10 +1740,7 @@ fn is_confirm(keyboard: &ButtonInput<KeyCode>, joystick: &JoystickState) -> bool
         || joystick.confirm()
 }
 
-fn despawn_menu<T: Component>(
-    mut commands: Commands,
-    query: Query<Entity, With<T>>,
-) {
+fn despawn_menu<T: Component>(mut commands: Commands, query: Query<Entity, With<T>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }

@@ -2,29 +2,29 @@
 //!
 //! Core gameplay systems: collision, spawning, scoring, effects, input, dialogue, audio.
 
+pub mod audio;
+pub mod boss;
+pub mod campaign;
 pub mod collision;
-pub mod spawning;
-pub mod scoring;
-pub mod scoring_v2;
+pub mod dialogue;
 pub mod effects;
 pub mod joystick;
-pub mod boss;
-pub mod dialogue;
-pub mod audio;
 pub mod maneuvers;
-pub mod campaign;
+pub mod scoring;
+pub mod scoring_v2;
+pub mod spawning;
 
+pub use audio::*;
+pub use boss::*;
+pub use campaign::CampaignPlugin;
 pub use collision::*;
-pub use spawning::*;
-pub use scoring::*;
-pub use scoring_v2::*;
+pub use dialogue::*;
 pub use effects::*;
 pub use joystick::*;
-pub use boss::*;
-pub use dialogue::*;
-pub use audio::*;
 pub use maneuvers::*;
-pub use campaign::CampaignPlugin;
+pub use scoring::*;
+pub use scoring_v2::*;
+pub use spawning::*;
 
 use bevy::prelude::*;
 

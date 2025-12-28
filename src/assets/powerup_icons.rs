@@ -50,10 +50,7 @@ fn get_icon_filename(collectible_type: &CollectibleType) -> Option<&'static str>
 }
 
 /// Load powerup icons from assets directory
-fn load_powerup_icons(
-    mut cache: ResMut<PowerupIconCache>,
-    mut images: ResMut<Assets<Image>>,
-) {
+fn load_powerup_icons(mut cache: ResMut<PowerupIconCache>, mut images: ResMut<Assets<Image>>) {
     // Construct path to powerups assets directory
     let assets_dir = std::env::current_dir()
         .unwrap_or_else(|_| PathBuf::from("."))

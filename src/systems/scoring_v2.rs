@@ -10,10 +10,10 @@ use bevy::prelude::*;
 pub const COMBO_TIMEOUT: f32 = 2.0;
 
 /// Combo bonus thresholds
-pub const COMBO_TIER_1: u32 = 5;   // 1.2x
-pub const COMBO_TIER_2: u32 = 10;  // 1.5x
-pub const COMBO_TIER_3: u32 = 20;  // 2.0x
-pub const COMBO_TIER_4: u32 = 50;  // 3.0x
+pub const COMBO_TIER_1: u32 = 5; // 1.2x
+pub const COMBO_TIER_2: u32 = 10; // 1.5x
+pub const COMBO_TIER_3: u32 = 20; // 2.0x
+pub const COMBO_TIER_4: u32 = 50; // 3.0x
 
 /// Heat level classification
 /// Heat system matches Python EVE Rebellion:
@@ -22,7 +22,7 @@ pub const COMBO_TIER_4: u32 = 50;  // 3.0x
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum HeatLevel {
     #[default]
-    Cool,       // 0-50%, normal operation
+    Cool, // 0-50%, normal operation
     Warm,       // 50-75%, score bonus
     Hot,        // 75-100%, higher score bonus
     Overheated, // Entered overheat - slower fire rate until heat drops to 50
@@ -49,7 +49,7 @@ impl HeatLevel {
             HeatLevel::Cool => 1.0,
             HeatLevel::Warm => 1.25,
             HeatLevel::Hot => 1.5,
-            HeatLevel::Overheated => 2.0,  // High risk, high reward
+            HeatLevel::Overheated => 2.0, // High risk, high reward
         }
     }
 
@@ -59,7 +59,7 @@ impl HeatLevel {
             HeatLevel::Cool => 1.0,
             HeatLevel::Warm => 1.0,
             HeatLevel::Hot => 1.0,
-            HeatLevel::Overheated => 0.7,  // 30% slower when overheated
+            HeatLevel::Overheated => 0.7, // 30% slower when overheated
         }
     }
 
@@ -84,8 +84,8 @@ pub struct ComboHeatSystem {
 
     // === Heat System (matches Python game) ===
     pub heat: f32,
-    pub heat_per_shot: f32,      // 2.0 per shot
-    pub heat_decay_rate: f32,    // ~72/second (1.2/frame at 60fps)
+    pub heat_per_shot: f32,   // 2.0 per shot
+    pub heat_decay_rate: f32, // ~72/second (1.2/frame at 60fps)
     pub heat_level: HeatLevel,
 
     // === Stats ===
@@ -100,8 +100,8 @@ impl Default for ComboHeatSystem {
             combo_timer: 0.0,
             max_combo: 0,
             heat: 0.0,
-            heat_per_shot: 2.0,       // Python: 2.0 per shot
-            heat_decay_rate: 72.0,    // Python: 1.2/frame * 60fps
+            heat_per_shot: 2.0,    // Python: 2.0 per shot
+            heat_decay_rate: 72.0, // Python: 1.2/frame * 60fps
             heat_level: HeatLevel::Cool,
             total_kills: 0,
             souls_liberated: 0,
@@ -235,9 +235,6 @@ impl Plugin for ScoringSystemPlugin {
     }
 }
 
-fn update_combo_heat_system(
-    time: Res<Time>,
-    mut system: ResMut<ComboHeatSystem>,
-) {
+fn update_combo_heat_system(time: Res<Time>, mut system: ResMut<ComboHeatSystem>) {
     system.update(time.delta_secs());
 }

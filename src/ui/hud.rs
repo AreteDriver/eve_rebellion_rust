@@ -3,10 +3,12 @@
 //! In-game UI: health bars, score, combo, heat, berserk meter, powerup indicators.
 //! EVE-style status panel with capacitor and health rings.
 
-use bevy::prelude::*;
 use crate::core::*;
-use crate::entities::{Player, ShipStats, PowerupEffects, Boss, BossData, BossState, WingmanTracker, Wingman};
+use crate::entities::{
+    Boss, BossData, BossState, Player, PowerupEffects, ShipStats, Wingman, WingmanTracker,
+};
 use crate::systems::{ComboHeatSystem, DialogueSystem};
+use bevy::prelude::*;
 
 /// HUD plugin
 pub struct HudPlugin;
@@ -28,7 +30,8 @@ impl Plugin for HudPlugin {
                     update_boss_health_bar,
                     update_dialogue_display,
                     update_wingman_gauge,
-                ).run_if(in_state(GameState::Playing)),
+                )
+                    .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnExit(GameState::Playing), despawn_hud);
     }
@@ -49,7 +52,6 @@ pub struct ComboText;
 /// Style grade text
 #[derive(Component)]
 pub struct GradeText;
-
 
 /// Berserk meter bar
 #[derive(Component)]
@@ -164,7 +166,8 @@ fn spawn_hud(mut commands: Commands) {
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::FlexStart,
                         ..default()
-                    }).with_children(|left| {
+                    })
+                    .with_children(|left| {
                         left.spawn((
                             ScoreText,
                             Text::new("SCORE: 0"),
@@ -217,7 +220,8 @@ fn spawn_hud(mut commands: Commands) {
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
                         ..default()
-                    }).with_children(|center| {
+                    })
+                    .with_children(|center| {
                         center.spawn((
                             ComboKillsText,
                             Text::new(""),
@@ -234,7 +238,8 @@ fn spawn_hud(mut commands: Commands) {
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::End,
                         ..default()
-                    }).with_children(|right| {
+                    })
+                    .with_children(|right| {
                         right.spawn((
                             ComboText,
                             Text::new("x1.0"),
@@ -282,25 +287,27 @@ fn spawn_hud(mut commands: Commands) {
                         TextColor(Color::srgb(1.0, 0.3, 0.3)),
                     ));
                     // Health bar background
-                    boss_ui.spawn((
-                        Node {
-                            width: Val::Percent(60.0),
-                            height: Val::Px(16.0),
-                            margin: UiRect::top(Val::Px(5.0)),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgba(0.2, 0.0, 0.0, 0.8)),
-                    )).with_children(|bar| {
-                        bar.spawn((
-                            BossHealthFill,
+                    boss_ui
+                        .spawn((
                             Node {
-                                width: Val::Percent(100.0),
-                                height: Val::Percent(100.0),
+                                width: Val::Percent(60.0),
+                                height: Val::Px(16.0),
+                                margin: UiRect::top(Val::Px(5.0)),
                                 ..default()
                             },
-                            BackgroundColor(Color::srgb(0.9, 0.2, 0.2)),
-                        ));
-                    });
+                            BackgroundColor(Color::srgba(0.2, 0.0, 0.0, 0.8)),
+                        ))
+                        .with_children(|bar| {
+                            bar.spawn((
+                                BossHealthFill,
+                                Node {
+                                    width: Val::Percent(100.0),
+                                    height: Val::Percent(100.0),
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgb(0.9, 0.2, 0.2)),
+                            ));
+                        });
                 });
 
             // === POWERUP INDICATORS (positioned next to capacitor wheel at bottom center-right) ===
@@ -309,9 +316,9 @@ fn spawn_hud(mut commands: Commands) {
                     PowerupIndicator,
                     Node {
                         position_type: PositionType::Absolute,
-                        bottom: Val::Px(50.0),  // Align with capacitor wheel height
-                        left: Val::Percent(50.0),  // Start at center
-                        margin: UiRect::left(Val::Px(100.0)),  // Offset to right of capacitor wheel
+                        bottom: Val::Px(50.0), // Align with capacitor wheel height
+                        left: Val::Percent(50.0), // Start at center
+                        margin: UiRect::left(Val::Px(100.0)), // Offset to right of capacitor wheel
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(4.0),
                         align_items: AlignItems::FlexStart,
@@ -374,7 +381,12 @@ fn spawn_hud(mut commands: Commands) {
                             // Heat meter (orange/red)
                             spawn_health_bar(left, HeatBar, Color::srgb(1.0, 0.5, 0.0), "HEAT");
                             // Berserk meter (purple)
-                            spawn_health_bar(left, BerserkBar, Color::srgb(0.8, 0.2, 0.8), "BERSERK");
+                            spawn_health_bar(
+                                left,
+                                BerserkBar,
+                                Color::srgb(0.8, 0.2, 0.8),
+                                "BERSERK",
+                            );
                         });
 
                     // Center: Spacer to push wingman gauge right
@@ -563,10 +575,7 @@ fn spawn_health_bar<M: Component>(parent: &mut ChildBuilder, marker: M, color: C
         });
 }
 
-fn update_score_display(
-    score: Res<ScoreSystem>,
-    mut query: Query<&mut Text, With<ScoreText>>,
-) {
+fn update_score_display(score: Res<ScoreSystem>, mut query: Query<&mut Text, With<ScoreText>>) {
     for mut text in query.iter_mut() {
         **text = format!("SCORE: {}", score.score);
     }
@@ -645,14 +654,15 @@ fn update_combo_kills(
 }
 
 /// Update wave display (with stage info)
-fn update_wave_display(
-    campaign: Res<CampaignState>,
-    mut query: Query<&mut Text, With<WaveText>>,
-) {
+fn update_wave_display(campaign: Res<CampaignState>, mut query: Query<&mut Text, With<WaveText>>) {
     for mut text in query.iter_mut() {
         if let Some(mission) = campaign.current_mission() {
             if campaign.is_boss_wave() {
-                **text = format!("WAVE {}/{} - BOSS", campaign.current_wave, mission.enemy_waves + 1);
+                **text = format!(
+                    "WAVE {}/{} - BOSS",
+                    campaign.current_wave,
+                    mission.enemy_waves + 1
+                );
             } else {
                 **text = format!("WAVE {}/{}", campaign.current_wave, mission.enemy_waves + 1);
             }
@@ -666,14 +676,40 @@ fn update_wave_display(
 fn update_mission_display(
     campaign: Res<CampaignState>,
     score: Res<ScoreSystem>,
-    mut mission_query: Query<&mut Text, (With<MissionNameText>, Without<ObjectiveText>, Without<SoulsText>)>,
-    mut objective_query: Query<(&mut Text, &mut TextColor), (With<ObjectiveText>, Without<MissionNameText>, Without<SoulsText>)>,
-    mut souls_query: Query<&mut Text, (With<SoulsText>, Without<MissionNameText>, Without<ObjectiveText>)>,
+    mut mission_query: Query<
+        &mut Text,
+        (
+            With<MissionNameText>,
+            Without<ObjectiveText>,
+            Without<SoulsText>,
+        ),
+    >,
+    mut objective_query: Query<
+        (&mut Text, &mut TextColor),
+        (
+            With<ObjectiveText>,
+            Without<MissionNameText>,
+            Without<SoulsText>,
+        ),
+    >,
+    mut souls_query: Query<
+        &mut Text,
+        (
+            With<SoulsText>,
+            Without<MissionNameText>,
+            Without<ObjectiveText>,
+        ),
+    >,
 ) {
     // Update mission name
     for mut text in mission_query.iter_mut() {
         if let Some(mission) = campaign.current_mission() {
-            **text = format!("M{}: {} - {}", campaign.mission_number(), mission.name, campaign.act.name());
+            **text = format!(
+                "M{}: {} - {}",
+                campaign.mission_number(),
+                mission.name,
+                campaign.act.name()
+            );
         } else {
             **text = String::new();
         }
@@ -716,9 +752,30 @@ fn update_mission_display(
 /// Update powerup effect indicators
 fn update_powerup_indicators(
     player_query: Query<&PowerupEffects, With<Player>>,
-    mut overdrive_query: Query<&mut Text, (With<OverdriveIndicator>, Without<DamageBoostIndicator>, Without<InvulnIndicator>)>,
-    mut damage_query: Query<&mut Text, (With<DamageBoostIndicator>, Without<OverdriveIndicator>, Without<InvulnIndicator>)>,
-    mut invuln_query: Query<&mut Text, (With<InvulnIndicator>, Without<OverdriveIndicator>, Without<DamageBoostIndicator>)>,
+    mut overdrive_query: Query<
+        &mut Text,
+        (
+            With<OverdriveIndicator>,
+            Without<DamageBoostIndicator>,
+            Without<InvulnIndicator>,
+        ),
+    >,
+    mut damage_query: Query<
+        &mut Text,
+        (
+            With<DamageBoostIndicator>,
+            Without<OverdriveIndicator>,
+            Without<InvulnIndicator>,
+        ),
+    >,
+    mut invuln_query: Query<
+        &mut Text,
+        (
+            With<InvulnIndicator>,
+            Without<OverdriveIndicator>,
+            Without<DamageBoostIndicator>,
+        ),
+    >,
 ) {
     let Ok(effects) = player_query.get_single() else {
         return;
@@ -760,7 +817,11 @@ fn update_boss_health_bar(
 
     // Show/hide boss health bar
     for mut node in container_query.iter_mut() {
-        node.display = if has_boss { Display::Flex } else { Display::None };
+        node.display = if has_boss {
+            Display::Flex
+        } else {
+            Display::None
+        };
     }
 
     if let Ok((data, state)) = boss_query.get_single() {
@@ -804,7 +865,11 @@ fn update_dialogue_display(
 
     // Show/hide dialogue container
     for mut node in container_query.iter_mut() {
-        node.display = if is_active { Display::Flex } else { Display::None };
+        node.display = if is_active {
+            Display::Flex
+        } else {
+            Display::None
+        };
     }
 
     if let Some(text) = &dialogue_system.active_text {
@@ -833,7 +898,11 @@ fn update_wingman_gauge(
 
     // Show/hide wingman gauge
     for mut node in gauge_query.iter_mut() {
-        node.display = if is_rifter { Display::Flex } else { Display::None };
+        node.display = if is_rifter {
+            Display::Flex
+        } else {
+            Display::None
+        };
     }
 
     if !is_rifter {
@@ -849,7 +918,10 @@ fn update_wingman_gauge(
     // Update count text
     let wingman_count = wingmen_query.iter().count();
     for mut text in count_query.iter_mut() {
-        **text = format!("{}/{} | Active: {}", tracker.kill_count, tracker.kills_per_wingman, wingman_count);
+        **text = format!(
+            "{}/{} | Active: {}",
+            tracker.kill_count, tracker.kills_per_wingman, wingman_count
+        );
     }
 }
 

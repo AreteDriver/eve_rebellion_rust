@@ -3,8 +3,8 @@
 //! Procedural sound effects for EVE Rebellion.
 //! Uses hound crate for proper WAV generation.
 
-use bevy::prelude::*;
 use bevy::audio::{PlaybackMode, Volume};
+use bevy::prelude::*;
 use std::f32::consts::PI;
 use std::io::Cursor;
 
@@ -27,7 +27,8 @@ impl Plugin for AudioPlugin {
                     play_pickup_sounds,
                     play_damage_sounds,
                     play_health_warnings,
-                ).run_if(in_state(GameState::Playing)),
+                )
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }
@@ -227,7 +228,8 @@ fn generate_explosion(duration: f32, base_freq: f32) -> Option<AudioSource> {
             fastrand::f32() * 2.0 - 1.0
         } else {
             0.0
-        } * (-t * 5.0).exp() * 0.3;
+        } * (-t * 5.0).exp()
+            * 0.3;
 
         // Envelope - quick attack, slow decay
         let env = (1.0 - (-t * 30.0).exp()) * (-t * 4.0).exp();
@@ -376,7 +378,9 @@ fn create_audio_source(samples: &[f32], sample_rate: u32) -> Option<AudioSource>
     }
 
     let wav_data = buffer.into_inner();
-    Some(AudioSource { bytes: Arc::from(wav_data.into_boxed_slice()) })
+    Some(AudioSource {
+        bytes: Arc::from(wav_data.into_boxed_slice()),
+    })
 }
 
 /// Play weapon firing sounds

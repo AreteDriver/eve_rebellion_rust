@@ -6,24 +6,23 @@
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 
+mod assets;
 mod core;
 mod entities;
+mod games;
 mod systems;
 mod ui;
-mod assets;
-mod games;
 
+use assets::AssetsPlugin;
 use core::{
-    GameState, GameEventsPlugin, ScoreSystem, BerserkSystem, GameProgress,
-    InputConfig, AudioSettings, Difficulty, SelectedShip, CurrentStage, ShipUnlocks,
-    CampaignState, MissionStartEvent, MissionCompleteEvent, WaveCompleteEvent,
-    BossSpawnEvent, ActCompleteEvent,
+    ActCompleteEvent, AudioSettings, BerserkSystem, BossSpawnEvent, CampaignState, CurrentStage,
+    Difficulty, GameEventsPlugin, GameProgress, GameState, InputConfig, MissionCompleteEvent,
+    MissionStartEvent, ScoreSystem, SelectedShip, ShipUnlocks, WaveCompleteEvent,
 };
 use entities::EntitiesPlugin;
+use games::GameModulesPlugin;
 use systems::SystemsPlugin;
 use ui::UiPlugin;
-use assets::AssetsPlugin;
-use games::GameModulesPlugin;
 
 fn main() {
     App::new()
@@ -38,10 +37,8 @@ fn main() {
             ..default()
         }))
         .add_plugins(EguiPlugin)
-
         // Game state
         .init_state::<GameState>()
-
         // Resources
         .init_resource::<ScoreSystem>()
         .init_resource::<BerserkSystem>()
@@ -53,14 +50,12 @@ fn main() {
         .init_resource::<CurrentStage>()
         .init_resource::<ShipUnlocks>()
         .init_resource::<CampaignState>()
-
         // Campaign events
         .add_event::<MissionStartEvent>()
         .add_event::<MissionCompleteEvent>()
         .add_event::<WaveCompleteEvent>()
         .add_event::<BossSpawnEvent>()
         .add_event::<ActCompleteEvent>()
-
         // Game plugins
         .add_plugins((
             AssetsPlugin,
@@ -70,10 +65,8 @@ fn main() {
             UiPlugin,
             GameModulesPlugin,
         ))
-
         // Setup
         .add_systems(Startup, setup)
-
         .run();
 }
 

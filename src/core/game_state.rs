@@ -10,8 +10,8 @@ pub enum GameState {
     #[default]
     Loading,
     MainMenu,
-    ModuleSelect,    // Choose game module (Elder Fleet, Caldari vs Gallente, etc.)
-    FactionSelect,   // Choose faction (for Caldari/Gallente module)
+    ModuleSelect,  // Choose game module (Elder Fleet, Caldari vs Gallente, etc.)
+    FactionSelect, // Choose faction (for Caldari/Gallente module)
     DifficultySelect,
     ShipSelect,
     Playing,
@@ -61,9 +61,15 @@ impl Difficulty {
     pub fn description(&self) -> &'static str {
         match self {
             Difficulty::Carebear => "Relaxed gameplay with generous shields and forgiving combat.",
-            Difficulty::Newbro => "Balanced experience for new pilots. Fair challenge with room to learn.",
-            Difficulty::BitterVet => "Punishing difficulty for experienced pilots. Enemies hit hard.",
-            Difficulty::Triglavian => "Nightmare mode. One-shot kills, relentless enemies, no mercy.",
+            Difficulty::Newbro => {
+                "Balanced experience for new pilots. Fair challenge with room to learn."
+            }
+            Difficulty::BitterVet => {
+                "Punishing difficulty for experienced pilots. Enemies hit hard."
+            }
+            Difficulty::Triglavian => {
+                "Nightmare mode. One-shot kills, relentless enemies, no mercy."
+            }
         }
     }
 
@@ -139,10 +145,10 @@ impl Difficulty {
 
     pub fn color(&self) -> Color {
         match self {
-            Difficulty::Carebear => Color::srgb(0.4, 0.8, 0.4),    // Green
-            Difficulty::Newbro => Color::srgb(0.4, 0.6, 1.0),      // Blue
-            Difficulty::BitterVet => Color::srgb(1.0, 0.6, 0.2),   // Orange
-            Difficulty::Triglavian => Color::srgb(0.8, 0.2, 0.2),  // Red
+            Difficulty::Carebear => Color::srgb(0.4, 0.8, 0.4), // Green
+            Difficulty::Newbro => Color::srgb(0.4, 0.6, 1.0),   // Blue
+            Difficulty::BitterVet => Color::srgb(1.0, 0.6, 0.2), // Orange
+            Difficulty::Triglavian => Color::srgb(0.8, 0.2, 0.2), // Red
         }
     }
 
@@ -182,13 +188,13 @@ impl Difficulty {
 pub enum MinmatarShip {
     // Frigates (always available)
     #[default]
-    Rifter,     // Balanced fighter
-    Slasher,    // Fast interceptor
-    Breacher,   // Missile boat
-    Probe,      // Utility/drones
+    Rifter, // Balanced fighter
+    Slasher,  // Fast interceptor
+    Breacher, // Missile boat
+    Probe,    // Utility/drones
     // Assault Frigates (unlockable)
-    Wolf,       // Assault Frigate - Act 2 unlock (autocannon)
-    Jaguar,     // Assault Frigate - Act 3 unlock (rockets)
+    Wolf,   // Assault Frigate - Act 2 unlock (autocannon)
+    Jaguar, // Assault Frigate - Act 3 unlock (rockets)
 }
 
 impl MinmatarShip {
@@ -229,8 +235,10 @@ impl MinmatarShip {
     /// Ship class name
     pub fn ship_class(&self) -> &'static str {
         match self {
-            MinmatarShip::Rifter | MinmatarShip::Slasher |
-            MinmatarShip::Breacher | MinmatarShip::Probe => "Frigate",
+            MinmatarShip::Rifter
+            | MinmatarShip::Slasher
+            | MinmatarShip::Breacher
+            | MinmatarShip::Probe => "Frigate",
             MinmatarShip::Wolf | MinmatarShip::Jaguar => "Assault Frigate",
         }
     }
@@ -242,8 +250,8 @@ impl MinmatarShip {
             MinmatarShip::Slasher => 1.4,
             MinmatarShip::Breacher => 0.9,
             MinmatarShip::Probe => 1.1,
-            MinmatarShip::Wolf => 1.13,    // 340/300 base
-            MinmatarShip::Jaguar => 1.27,  // 380/300 base
+            MinmatarShip::Wolf => 1.13,   // 340/300 base
+            MinmatarShip::Jaguar => 1.27, // 380/300 base
         }
     }
 
@@ -254,8 +262,8 @@ impl MinmatarShip {
             MinmatarShip::Slasher => 0.8,
             MinmatarShip::Breacher => 1.2,
             MinmatarShip::Probe => 0.7,
-            MinmatarShip::Wolf => 1.5,     // Heavy autocannons
-            MinmatarShip::Jaguar => 1.8,   // Rocket swarm
+            MinmatarShip::Wolf => 1.5,   // Heavy autocannons
+            MinmatarShip::Jaguar => 1.8, // Rocket swarm
         }
     }
 
@@ -266,8 +274,8 @@ impl MinmatarShip {
             MinmatarShip::Slasher => 0.7,
             MinmatarShip::Breacher => 1.1,
             MinmatarShip::Probe => 0.9,
-            MinmatarShip::Wolf => 1.5,     // 150 hull
-            MinmatarShip::Jaguar => 1.4,   // 140 hull
+            MinmatarShip::Wolf => 1.5,   // 150 hull
+            MinmatarShip::Jaguar => 1.4, // 140 hull
         }
     }
 
@@ -278,8 +286,8 @@ impl MinmatarShip {
             MinmatarShip::Slasher => 1.3,
             MinmatarShip::Breacher => 0.7,
             MinmatarShip::Probe => 1.0,
-            MinmatarShip::Wolf => 1.6,     // 8 fire rate
-            MinmatarShip::Jaguar => 0.5,   // 2.5 fire rate, but high damage
+            MinmatarShip::Wolf => 1.6,   // 8 fire rate
+            MinmatarShip::Jaguar => 0.5, // 2.5 fire rate, but high damage
         }
     }
 
@@ -303,8 +311,10 @@ impl MinmatarShip {
     /// Which act unlocks this ship (0 = always available)
     pub fn unlock_act(&self) -> u32 {
         match self {
-            MinmatarShip::Rifter | MinmatarShip::Slasher |
-            MinmatarShip::Breacher | MinmatarShip::Probe => 0,
+            MinmatarShip::Rifter
+            | MinmatarShip::Slasher
+            | MinmatarShip::Breacher
+            | MinmatarShip::Probe => 0,
             MinmatarShip::Wolf => 2,
             MinmatarShip::Jaguar => 3,
         }

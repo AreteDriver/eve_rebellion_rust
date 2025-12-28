@@ -3,9 +3,9 @@
 //! Evasive maneuvers: Thrust burst and Barrel roll with i-frames.
 //! Based on design doc config/maneuvers/evasion.json
 
-use bevy::prelude::*;
 use crate::core::*;
-use crate::entities::{Player, Movement, ShipStats};
+use crate::entities::{Movement, Player, ShipStats};
+use bevy::prelude::*;
 
 /// Maneuver system plugin
 pub struct ManeuverPlugin;
@@ -21,7 +21,9 @@ impl Plugin for ManeuverPlugin {
                     update_thrust,
                     update_barrel_roll,
                     update_maneuver_cooldowns,
-                ).chain().run_if(in_state(GameState::Playing)),
+                )
+                    .chain()
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }
@@ -266,11 +268,7 @@ fn update_barrel_roll(
     let target_x = maneuver.barrel_roll_start_x
         + maneuver.barrel_roll_direction * ManeuverConfig::BARREL_ROLL_DISTANCE;
 
-    transform.translation.x = lerp(
-        maneuver.barrel_roll_start_x,
-        target_x,
-        eased_progress,
-    );
+    transform.translation.x = lerp(maneuver.barrel_roll_start_x, target_x, eased_progress);
 
     // Clamp to screen
     let half_width = SCREEN_WIDTH / 2.0 - 32.0;
@@ -287,10 +285,7 @@ fn update_barrel_roll(
 }
 
 /// Update cooldown timers
-fn update_maneuver_cooldowns(
-    time: Res<Time>,
-    mut query: Query<&mut ManeuverState, With<Player>>,
-) {
+fn update_maneuver_cooldowns(time: Res<Time>, mut query: Query<&mut ManeuverState, With<Player>>) {
     let Ok(mut maneuver) = query.get_single_mut() else {
         return;
     };

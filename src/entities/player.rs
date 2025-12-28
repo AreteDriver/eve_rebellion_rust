@@ -2,9 +2,9 @@
 //!
 //! The player-controlled ship with EVE-style shield/armor/hull.
 
-use bevy::prelude::*;
 use crate::core::*;
 use crate::systems::ManeuverState;
+use bevy::prelude::*;
 
 /// Marker component for the player entity
 #[derive(Component, Debug)]
@@ -102,7 +102,7 @@ impl ShipStats {
     pub fn take_damage(&mut self, damage: f32, damage_type: DamageType) -> bool {
         // Apply damage type resistances (simplified)
         let resistance = match damage_type {
-            DamageType::EM => 0.0,        // Shield weak to EM
+            DamageType::EM => 0.0, // Shield weak to EM
             DamageType::Thermal => 0.2,
             DamageType::Kinetic => 0.4,
             DamageType::Explosive => 0.5, // Shield strong vs Explosive
@@ -143,7 +143,8 @@ impl ShipStats {
 
         // Capacitor recharge
         if self.capacitor < self.max_capacitor {
-            self.capacitor = (self.capacitor + self.capacitor_recharge * dt).min(self.max_capacitor);
+            self.capacitor =
+                (self.capacitor + self.capacitor_recharge * dt).min(self.max_capacitor);
         }
     }
 
@@ -264,11 +265,8 @@ impl Plugin for PlayerPlugin {
         app.add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(
                 Update,
-                (
-                    player_movement,
-                    player_shooting,
-                    update_player_stats,
-                ).run_if(in_state(GameState::Playing)),
+                (player_movement, player_shooting, update_player_stats)
+                    .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnExit(GameState::Playing), despawn_player);
     }
@@ -319,7 +317,10 @@ fn spawn_player(
         ));
     } else {
         // Fallback: simple colored sprite
-        warn!("No model or sprite for type {}, using color fallback", type_id);
+        warn!(
+            "No model or sprite for type {}, using color fallback",
+            type_id
+        );
         commands.spawn((
             Player,
             stats,
@@ -499,10 +500,7 @@ fn player_shooting(
 }
 
 /// Update player stats (shield recharge, etc)
-fn update_player_stats(
-    time: Res<Time>,
-    mut query: Query<&mut ShipStats, With<Player>>,
-) {
+fn update_player_stats(time: Res<Time>, mut query: Query<&mut ShipStats, With<Player>>) {
     let Ok(mut stats) = query.get_single_mut() else {
         return;
     };
@@ -511,10 +509,7 @@ fn update_player_stats(
 }
 
 /// Despawn player when leaving gameplay
-fn despawn_player(
-    mut commands: Commands,
-    query: Query<Entity, With<Player>>,
-) {
+fn despawn_player(mut commands: Commands, query: Query<Entity, With<Player>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }

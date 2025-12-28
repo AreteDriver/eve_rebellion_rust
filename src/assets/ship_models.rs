@@ -68,10 +68,7 @@ fn setup_model_cache(mut cache: ResMut<ShipModelCache>) {
     info!("Ship model cache initialized");
 }
 
-fn load_available_models(
-    mut cache: ResMut<ShipModelCache>,
-    asset_server: Res<AssetServer>,
-) {
+fn load_available_models(mut cache: ResMut<ShipModelCache>, asset_server: Res<AssetServer>) {
     if cache.ready {
         return;
     }
@@ -88,7 +85,10 @@ fn load_available_models(
     }
 
     cache.ready = true;
-    info!("Ship model loading initiated for {} potential models", SHIP_MODELS.len());
+    info!(
+        "Ship model loading initiated for {} potential models",
+        SHIP_MODELS.len()
+    );
 }
 
 /// Get the scale factor for a ship model
@@ -149,9 +149,9 @@ impl ShipModelRotation {
         Self {
             base_rotation: Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)
                 * Quat::from_rotation_z(std::f32::consts::PI),
-            max_bank: 0.15,  // Bosses bank less
+            max_bank: 0.15, // Bosses bank less
             max_pitch: 0.1,
-            smoothing: 3.0,  // Slower response
+            smoothing: 3.0, // Slower response
         }
     }
 
@@ -173,8 +173,6 @@ impl ShipModelRotation {
         let pitch_angle = vy * self.max_pitch;
 
         // Combine: base rotation * local pitch * local bank
-        self.base_rotation
-            * Quat::from_rotation_x(pitch_angle)
-            * Quat::from_rotation_y(bank_angle)
+        self.base_rotation * Quat::from_rotation_x(pitch_angle) * Quat::from_rotation_y(bank_angle)
     }
 }

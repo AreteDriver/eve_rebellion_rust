@@ -2,9 +2,9 @@
 //!
 //! Power-ups, refugees, credits, etc.
 
-use bevy::prelude::*;
 use crate::core::*;
-use crate::systems::{ComboHeatSystem, DialogueEvent, check_liberation_milestone};
+use crate::systems::{check_liberation_milestone, ComboHeatSystem, DialogueEvent};
+use bevy::prelude::*;
 
 /// Marker component for collectibles
 #[derive(Component, Debug)]
@@ -65,11 +65,19 @@ impl PowerupEffects {
     }
 
     pub fn speed_mult(&self) -> f32 {
-        if self.is_overdrive() { 1.5 } else { 1.0 }
+        if self.is_overdrive() {
+            1.5
+        } else {
+            1.0
+        }
     }
 
     pub fn damage_mult(&self) -> f32 {
-        if self.is_damage_boosted() { 2.0 } else { 1.0 }
+        if self.is_damage_boosted() {
+            2.0
+        } else {
+            1.0
+        }
     }
 }
 
@@ -96,7 +104,8 @@ impl Plugin for CollectiblePlugin {
                 collectible_pickup,
                 handle_pickup_effects,
                 update_powerup_timers,
-            ).run_if(in_state(GameState::Playing)),
+            )
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -176,7 +185,10 @@ fn collectible_pickup(
 /// Handle pickup effects - apply powerup to player
 fn handle_pickup_effects(
     mut pickup_events: EventReader<CollectiblePickedUpEvent>,
-    mut player_query: Query<(&mut super::player::ShipStats, &mut PowerupEffects), With<super::Player>>,
+    mut player_query: Query<
+        (&mut super::player::ShipStats, &mut PowerupEffects),
+        With<super::Player>,
+    >,
     mut score: ResMut<ScoreSystem>,
     mut progress: ResMut<GameProgress>,
     mut heat_system: ResMut<ComboHeatSystem>,
@@ -194,7 +206,9 @@ fn handle_pickup_effects(
                 score.add_score(500);
 
                 // Check for liberation milestone
-                if let Some(milestone) = check_liberation_milestone(old_count, score.souls_liberated) {
+                if let Some(milestone) =
+                    check_liberation_milestone(old_count, score.souls_liberated)
+                {
                     dialogue_events.send(DialogueEvent::liberation_milestone(milestone));
                     info!("Liberation milestone reached: {} souls!", milestone);
                 }
@@ -245,10 +259,7 @@ fn handle_pickup_effects(
 }
 
 /// Update powerup effect timers
-fn update_powerup_timers(
-    time: Res<Time>,
-    mut query: Query<&mut PowerupEffects>,
-) {
+fn update_powerup_timers(time: Res<Time>, mut query: Query<&mut PowerupEffects>) {
     let dt = time.delta_secs();
     for mut effects in query.iter_mut() {
         if effects.overdrive_timer > 0.0 {
@@ -271,7 +282,7 @@ pub fn spawn_collectible(
     icon_cache: Option<&crate::assets::PowerupIconCache>,
 ) {
     let (color, size, value) = match collectible_type {
-        CollectibleType::LiberationPod => (Color::srgb(0.2, 0.9, 0.5), 20.0, 1),  // Green glow
+        CollectibleType::LiberationPod => (Color::srgb(0.2, 0.9, 0.5), 20.0, 1), // Green glow
         CollectibleType::Credits => (Color::srgb(1.0, 0.84, 0.0), 12.0, 100),
         CollectibleType::ShieldBoost => (COLOR_SHIELD, 28.0, 25),
         CollectibleType::ArmorRepair => (COLOR_ARMOR, 28.0, 25),
@@ -324,11 +335,7 @@ pub fn spawn_collectible(
 }
 
 /// Spawn liberation pods in a burst pattern
-pub fn spawn_liberation_pods(
-    commands: &mut Commands,
-    position: Vec2,
-    count: u32,
-) {
+pub fn spawn_liberation_pods(commands: &mut Commands, position: Vec2, count: u32) {
     use std::f32::consts::TAU;
 
     // Cap at reasonable maximum to avoid lag

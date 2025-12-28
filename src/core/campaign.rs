@@ -8,9 +8,9 @@ use bevy::prelude::*;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Act {
     #[default]
-    Act1,  // "The Call" - Rifter, proving yourself
-    Act2,  // "The Storm" - Wolf, full assault
-    Act3,  // "Liberation" - Jaguar, final push
+    Act1, // "The Call" - Rifter, proving yourself
+    Act2, // "The Storm" - Wolf, full assault
+    Act3, // "Liberation" - Jaguar, final push
 }
 
 impl Act {
@@ -32,7 +32,9 @@ impl Act {
 
     pub fn description(&self) -> &'static str {
         match self {
-            Act::Act1 => "Prove yourself worthy in a rust-bucket Rifter. Early raids on slave convoys.",
+            Act::Act1 => {
+                "Prove yourself worthy in a rust-bucket Rifter. Early raids on slave convoys."
+            }
             Act::Act2 => "The invasion begins in earnest. You've earned an assault frigate.",
             Act::Act3 => "The final push. Strike at the heart of the Empire.",
         }
@@ -82,21 +84,21 @@ pub enum BossType {
     #[default]
     None,
     // Act 1 bosses
-    TransportOverseer,    // M1: Slave transport captain
-    PatrolCommander,      // M2: Amarr patrol lead
-    StationBattery,       // M3: Defense turret array
-    HolderEscort,         // M4: Holder's escort captain
+    TransportOverseer, // M1: Slave transport captain
+    PatrolCommander,   // M2: Amarr patrol lead
+    StationBattery,    // M3: Defense turret array
+    HolderEscort,      // M4: Holder's escort captain
     // Act 2 bosses
-    CustomsCommandant,    // M5: Customs officer
-    InquisitorVessel,     // M6: Inquisition ship
-    HarbingerStrike,      // M7: Navy Harbinger
-    StargateDefense,      // M8: Gate defense grid
-    BattlestationCore,    // M9: Battlestation
+    CustomsCommandant, // M5: Customs officer
+    InquisitorVessel,  // M6: Inquisition ship
+    HarbingerStrike,   // M7: Navy Harbinger
+    StargateDefense,   // M8: Gate defense grid
+    BattlestationCore, // M9: Battlestation
     // Act 3 bosses
-    AbaddonBattleship,    // M10: Abaddon-class
-    TitanEscort,          // M11: Avatar escort fleet
-    EmpressChampion,      // M12: Royal champion
-    AvatarTitan,          // M13: Final boss - Avatar titan
+    AbaddonBattleship, // M10: Abaddon-class
+    TitanEscort,       // M11: Avatar escort fleet
+    EmpressChampion,   // M12: Royal champion
+    AvatarTitan,       // M13: Final boss - Avatar titan
 }
 
 impl BossType {
@@ -158,19 +160,19 @@ impl BossType {
     pub fn eve_type_id(&self) -> u32 {
         match self {
             BossType::None => 0,
-            BossType::TransportOverseer => 20185,  // Bestower
-            BossType::PatrolCommander => 597,      // Punisher
-            BossType::StationBattery => 0,         // Custom structure
-            BossType::HolderEscort => 589,         // Executioner
-            BossType::CustomsCommandant => 2006,   // Apocalypse
-            BossType::InquisitorVessel => 24690,   // Absolution
-            BossType::HarbingerStrike => 24690,    // Harbinger
-            BossType::StargateDefense => 0,        // Custom structure
-            BossType::BattlestationCore => 0,      // Custom structure
-            BossType::AbaddonBattleship => 24692,  // Abaddon
-            BossType::TitanEscort => 24690,        // Fleet mix
-            BossType::EmpressChampion => 17726,    // Apocalypse Navy
-            BossType::AvatarTitan => 11567,        // Avatar
+            BossType::TransportOverseer => 20185, // Bestower
+            BossType::PatrolCommander => 597,     // Punisher
+            BossType::StationBattery => 0,        // Custom structure
+            BossType::HolderEscort => 589,        // Executioner
+            BossType::CustomsCommandant => 2006,  // Apocalypse
+            BossType::InquisitorVessel => 24690,  // Absolution
+            BossType::HarbingerStrike => 24690,   // Harbinger
+            BossType::StargateDefense => 0,       // Custom structure
+            BossType::BattlestationCore => 0,     // Custom structure
+            BossType::AbaddonBattleship => 24692, // Abaddon
+            BossType::TitanEscort => 24690,       // Fleet mix
+            BossType::EmpressChampion => 17726,   // Apocalypse Navy
+            BossType::AvatarTitan => 11567,       // Avatar
         }
     }
 }

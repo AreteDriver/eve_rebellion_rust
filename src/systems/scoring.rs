@@ -2,8 +2,8 @@
 //!
 //! Handles score, multipliers, chain combos, and berserk meter.
 
-use bevy::prelude::*;
 use crate::core::*;
+use bevy::prelude::*;
 
 /// Scoring plugin
 pub struct ScoringPlugin;
@@ -12,19 +12,13 @@ impl Plugin for ScoringPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (
-                update_score_system,
-                update_berserk_system,
-            ).run_if(in_state(GameState::Playing)),
+            (update_score_system, update_berserk_system).run_if(in_state(GameState::Playing)),
         );
     }
 }
 
 /// Update score chain timer
-fn update_score_system(
-    time: Res<Time>,
-    mut score: ResMut<ScoreSystem>,
-) {
+fn update_score_system(time: Res<Time>, mut score: ResMut<ScoreSystem>) {
     score.update(time.delta_secs());
 }
 

@@ -219,17 +219,29 @@ impl BerserkSystem {
 
     /// Get score multiplier
     pub fn score_mult(&self) -> f32 {
-        if self.is_active { 2.0 } else { 1.0 }
+        if self.is_active {
+            2.0
+        } else {
+            1.0
+        }
     }
 
     /// Get damage multiplier
     pub fn damage_mult(&self) -> f32 {
-        if self.is_active { 2.0 } else { 1.0 }
+        if self.is_active {
+            2.0
+        } else {
+            1.0
+        }
     }
 
     /// Get speed multiplier
     pub fn speed_mult(&self) -> f32 {
-        if self.is_active { 1.5 } else { 1.0 }
+        if self.is_active {
+            1.5
+        } else {
+            1.0
+        }
     }
 
     /// Get progress toward berserk (0.0 - 1.0)
@@ -336,19 +348,27 @@ impl DifficultyLevel {
 
     pub fn description(&self) -> &'static str {
         match self {
-            DifficultyLevel::Carebear => "Relaxed gameplay with generous shields and forgiving combat.",
-            DifficultyLevel::Newbro => "Balanced experience for new pilots. Fair challenge with room to learn.",
-            DifficultyLevel::BitterVet => "Punishing difficulty for experienced pilots. Enemies hit hard.",
-            DifficultyLevel::Triglavian => "Nightmare mode. One-shot kills, relentless enemies, no mercy.",
+            DifficultyLevel::Carebear => {
+                "Relaxed gameplay with generous shields and forgiving combat."
+            }
+            DifficultyLevel::Newbro => {
+                "Balanced experience for new pilots. Fair challenge with room to learn."
+            }
+            DifficultyLevel::BitterVet => {
+                "Punishing difficulty for experienced pilots. Enemies hit hard."
+            }
+            DifficultyLevel::Triglavian => {
+                "Nightmare mode. One-shot kills, relentless enemies, no mercy."
+            }
         }
     }
 
     pub fn color(&self) -> Color {
         match self {
-            DifficultyLevel::Carebear => Color::srgb(0.4, 0.8, 0.4),    // Green
-            DifficultyLevel::Newbro => Color::srgb(0.4, 0.6, 1.0),      // Blue
-            DifficultyLevel::BitterVet => Color::srgb(1.0, 0.6, 0.2),   // Orange
-            DifficultyLevel::Triglavian => Color::srgb(0.8, 0.2, 0.2),  // Red
+            DifficultyLevel::Carebear => Color::srgb(0.4, 0.8, 0.4), // Green
+            DifficultyLevel::Newbro => Color::srgb(0.4, 0.6, 1.0),   // Blue
+            DifficultyLevel::BitterVet => Color::srgb(1.0, 0.6, 0.2), // Orange
+            DifficultyLevel::Triglavian => Color::srgb(0.8, 0.2, 0.2), // Red
         }
     }
 

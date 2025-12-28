@@ -123,7 +123,7 @@ pub const CG_EPILOGUE_SHIIGERU: CGMission = CGMission {
     description: "The Caldari titan Shiigeru falls. An endless nightmare aboard the dying vessel.",
     primary_objective: "Survive as long as possible",
     bonus_objective: None,
-    waves: 0, // Endless
+    waves: 0,   // Endless
     boss: None, // Multiple mini-bosses spawn over time
     is_tutorial: false,
     unlocks_t3: false,

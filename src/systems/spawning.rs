@@ -2,14 +2,14 @@
 //!
 //! Handles wave-based enemy spawning.
 
-use bevy::prelude::*;
+use super::dialogue::{DialogueEvent, DialogueSystem};
+use crate::assets::ShipModelCache;
 use crate::core::*;
 use crate::entities::{
-    spawn_enemy, spawn_kamikaze, spawn_weaver, spawn_sniper,
-    spawn_spawner_enemy, spawn_tank, EnemyBehavior
+    spawn_enemy, spawn_kamikaze, spawn_sniper, spawn_spawner_enemy, spawn_tank, spawn_weaver,
+    EnemyBehavior,
 };
-use crate::assets::ShipModelCache;
-use super::dialogue::{DialogueEvent, DialogueSystem};
+use bevy::prelude::*;
 
 /// Spawning plugin
 pub struct SpawningPlugin;
@@ -20,10 +20,7 @@ impl Plugin for SpawningPlugin {
             .add_systems(OnEnter(GameState::Playing), reset_wave_manager)
             .add_systems(
                 Update,
-                (
-                    wave_spawning,
-                    handle_spawn_events,
-                ).run_if(in_state(GameState::Playing)),
+                (wave_spawning, handle_spawn_events).run_if(in_state(GameState::Playing)),
             );
     }
 }
@@ -137,7 +134,10 @@ fn wave_spawning(
             dialogue_events.send(DialogueEvent::act_complete(3));
         }
 
-        info!("Stage {} complete! {} defeated!", manager.current_stage, event.boss_name);
+        info!(
+            "Stage {} complete! {} defeated!",
+            manager.current_stage, event.boss_name
+        );
     }
 
     // If boss is active, don't spawn waves
@@ -192,11 +192,17 @@ fn wave_spawning(
             wave_events.send(SpawnWaveEvent {
                 wave_number: manager.wave,
                 enemy_count: wave_def.enemy_count,
-                enemy_types: wave_def.enemy_types.iter().map(|id| format!("{}", id)).collect(),
+                enemy_types: wave_def
+                    .enemy_types
+                    .iter()
+                    .map(|id| format!("{}", id))
+                    .collect(),
             });
 
-            info!("Stage {} Wave {}/{}: {} enemies",
-                manager.current_stage, manager.wave, manager.waves_per_stage, wave_def.enemy_count);
+            info!(
+                "Stage {} Wave {}/{}: {} enemies",
+                manager.current_stage, manager.wave, manager.waves_per_stage, wave_def.enemy_count
+            );
         }
         return;
     }
@@ -239,7 +245,8 @@ fn wave_spawning(
                     Vec2::new(x, y)
                 }
                 SpawnPattern::Circle => {
-                    let angle = (manager.enemies_remaining as f32) / (wave_def.enemy_count as f32) * std::f32::consts::TAU;
+                    let angle = (manager.enemies_remaining as f32) / (wave_def.enemy_count as f32)
+                        * std::f32::consts::TAU;
                     let x = angle.cos() * 200.0;
                     let y = angle.sin() * 100.0 + 200.0;
                     Vec2::new(x, y)
@@ -271,7 +278,14 @@ fn wave_spawning(
                     spawn_tank(&mut commands, pos, sprite, Some(&model_cache));
                 }
                 _ => {
-                    spawn_enemy(&mut commands, type_id, pos, behavior, sprite, Some(&model_cache));
+                    spawn_enemy(
+                        &mut commands,
+                        type_id,
+                        pos,
+                        behavior,
+                        sprite,
+                        Some(&model_cache),
+                    );
                 }
             }
             manager.enemies_remaining -= 1;
@@ -305,7 +319,14 @@ fn handle_spawn_events(
         };
 
         let sprite = sprite_cache.get(type_id);
-        spawn_enemy(&mut commands, type_id, event.position, behavior, sprite, Some(&model_cache));
+        spawn_enemy(
+            &mut commands,
+            type_id,
+            event.position,
+            behavior,
+            sprite,
+            Some(&model_cache),
+        );
     }
 }
 
@@ -344,12 +365,41 @@ fn get_wave_definition(stage: u32, wave: u32) -> WaveDefinition {
     // Behaviors get more aggressive and varied with stage
     let behaviors = match stage {
         1..=2 => vec![EnemyBehavior::Linear],
-        3..=4 => vec![EnemyBehavior::Linear, EnemyBehavior::Zigzag, EnemyBehavior::Weaver],
-        5..=6 => vec![EnemyBehavior::Linear, EnemyBehavior::Zigzag, EnemyBehavior::Homing, EnemyBehavior::Sniper],
-        7..=8 => vec![EnemyBehavior::Zigzag, EnemyBehavior::Homing, EnemyBehavior::Weaver, EnemyBehavior::Sniper],
-        9..=10 => vec![EnemyBehavior::Homing, EnemyBehavior::Orbital, EnemyBehavior::Tank, EnemyBehavior::Spawner],
-        11..=12 => vec![EnemyBehavior::Homing, EnemyBehavior::Kamikaze, EnemyBehavior::Tank, EnemyBehavior::Spawner],
-        _ => vec![EnemyBehavior::Kamikaze, EnemyBehavior::Tank, EnemyBehavior::Spawner, EnemyBehavior::Sniper],
+        3..=4 => vec![
+            EnemyBehavior::Linear,
+            EnemyBehavior::Zigzag,
+            EnemyBehavior::Weaver,
+        ],
+        5..=6 => vec![
+            EnemyBehavior::Linear,
+            EnemyBehavior::Zigzag,
+            EnemyBehavior::Homing,
+            EnemyBehavior::Sniper,
+        ],
+        7..=8 => vec![
+            EnemyBehavior::Zigzag,
+            EnemyBehavior::Homing,
+            EnemyBehavior::Weaver,
+            EnemyBehavior::Sniper,
+        ],
+        9..=10 => vec![
+            EnemyBehavior::Homing,
+            EnemyBehavior::Orbital,
+            EnemyBehavior::Tank,
+            EnemyBehavior::Spawner,
+        ],
+        11..=12 => vec![
+            EnemyBehavior::Homing,
+            EnemyBehavior::Kamikaze,
+            EnemyBehavior::Tank,
+            EnemyBehavior::Spawner,
+        ],
+        _ => vec![
+            EnemyBehavior::Kamikaze,
+            EnemyBehavior::Tank,
+            EnemyBehavior::Spawner,
+            EnemyBehavior::Sniper,
+        ],
     };
 
     // Spawn patterns cycle with wave

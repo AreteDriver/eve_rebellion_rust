@@ -2,8 +2,8 @@
 //!
 //! Player bullets, enemy bullets, missiles, drones.
 
-use bevy::prelude::*;
 use crate::core::*;
+use bevy::prelude::*;
 
 /// Marker for player projectiles
 #[derive(Component, Debug)]
@@ -107,7 +107,8 @@ impl Plugin for ProjectilePlugin {
                 projectile_movement,
                 projectile_lifetime,
                 projectile_bounds_check,
-            ).run_if(in_state(GameState::Playing)),
+            )
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -126,23 +127,23 @@ fn spawn_player_projectiles(
         let (damage_type, bullet_color) = match event.weapon_type {
             WeaponType::Autocannon | WeaponType::Artillery => (
                 DamageType::Kinetic,
-                Color::srgb(1.0, 0.9, 0.4),      // Yellow/orange
+                Color::srgb(1.0, 0.9, 0.4), // Yellow/orange
             ),
             WeaponType::Laser => (
                 DamageType::EM,
-                Color::srgb(1.0, 0.3, 0.3),      // Red
+                Color::srgb(1.0, 0.3, 0.3), // Red
             ),
             WeaponType::Railgun => (
                 DamageType::Kinetic,
-                Color::srgb(0.5, 0.8, 1.0),      // Cyan
+                Color::srgb(0.5, 0.8, 1.0), // Cyan
             ),
             WeaponType::MissileLauncher => (
                 DamageType::Explosive,
-                Color::srgb(1.0, 0.5, 0.2),      // Orange
+                Color::srgb(1.0, 0.5, 0.2), // Orange
             ),
             WeaponType::Drone => (
                 DamageType::Thermal,
-                Color::srgb(0.8, 1.0, 0.5),      // Green
+                Color::srgb(0.8, 1.0, 0.5), // Green
             ),
         };
 
@@ -175,10 +176,7 @@ fn spawn_player_projectiles(
 }
 
 /// Move all projectiles
-fn projectile_movement(
-    time: Res<Time>,
-    mut query: Query<(&mut Transform, &ProjectilePhysics)>,
-) {
+fn projectile_movement(time: Res<Time>, mut query: Query<(&mut Transform, &ProjectilePhysics)>) {
     let dt = time.delta_secs();
     for (mut transform, physics) in query.iter_mut() {
         transform.translation.x += physics.velocity.x * dt;
@@ -260,28 +258,28 @@ pub fn spawn_enemy_projectile_typed(
     let (damage_type, color, size) = match weapon_type {
         WeaponType::Laser => (
             DamageType::EM,
-            Color::srgb(1.0, 0.2, 0.2),         // Amarr red laser
-            Vec2::new(3.0, 16.0),                // Beam shape
+            Color::srgb(1.0, 0.2, 0.2), // Amarr red laser
+            Vec2::new(3.0, 16.0),       // Beam shape
         ),
         WeaponType::Railgun => (
             DamageType::Kinetic,
-            Color::srgb(0.4, 0.8, 1.0),         // Caldari cyan
-            Vec2::new(4.0, 10.0),                // Fast bolt
+            Color::srgb(0.4, 0.8, 1.0), // Caldari cyan
+            Vec2::new(4.0, 10.0),       // Fast bolt
         ),
         WeaponType::MissileLauncher => (
             DamageType::Explosive,
-            Color::srgb(1.0, 0.5, 0.15),        // Orange missile
-            Vec2::new(6.0, 8.0),                 // Larger missile
+            Color::srgb(1.0, 0.5, 0.15), // Orange missile
+            Vec2::new(6.0, 8.0),         // Larger missile
         ),
         WeaponType::Drone => (
             DamageType::Thermal,
-            Color::srgb(0.5, 1.0, 0.4),         // Gallente green
-            Vec2::new(5.0, 5.0),                 // Round drone shot
+            Color::srgb(0.5, 1.0, 0.4), // Gallente green
+            Vec2::new(5.0, 5.0),        // Round drone shot
         ),
         WeaponType::Autocannon | WeaponType::Artillery => (
             DamageType::Kinetic,
-            Color::srgb(1.0, 0.8, 0.3),         // Minmatar yellow/orange
-            Vec2::new(4.0, 8.0),                 // Bullet shape
+            Color::srgb(1.0, 0.8, 0.3), // Minmatar yellow/orange
+            Vec2::new(4.0, 8.0),        // Bullet shape
         ),
     };
 

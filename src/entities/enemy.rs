@@ -2,9 +2,9 @@
 //!
 //! All enemy ship types, AI behaviors, and wave spawning.
 
-use bevy::prelude::*;
+use crate::assets::{get_model_scale, ShipModelCache, ShipModelRotation};
 use crate::core::*;
-use crate::assets::{ShipModelCache, ShipModelRotation, get_model_scale};
+use bevy::prelude::*;
 
 /// Marker component for enemy entities
 #[derive(Component, Debug)]
@@ -209,7 +209,8 @@ impl Plugin for EnemyPlugin {
                 enemy_shooting,
                 spawner_update,
                 enemy_bounds_check,
-            ).run_if(in_state(GameState::Playing)),
+            )
+                .run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -218,7 +219,10 @@ impl Plugin for EnemyPlugin {
 fn enemy_movement(
     time: Res<Time>,
     player_query: Query<&Transform, With<super::Player>>,
-    mut query: Query<(&mut Transform, &EnemyStats, &mut EnemyAI), (With<Enemy>, Without<super::Player>)>,
+    mut query: Query<
+        (&mut Transform, &EnemyStats, &mut EnemyAI),
+        (With<Enemy>, Without<super::Player>),
+    >,
 ) {
     let dt = time.delta_secs();
     let player_pos = player_query
@@ -231,9 +235,7 @@ fn enemy_movement(
         let pos = transform.translation.truncate();
 
         let velocity = match ai.behavior {
-            EnemyBehavior::Linear => {
-                Vec2::new(0.0, -1.0) * stats.speed
-            }
+            EnemyBehavior::Linear => Vec2::new(0.0, -1.0) * stats.speed,
             EnemyBehavior::Zigzag => {
                 let x = (ai.timer * 3.0 + ai.phase).sin() * stats.speed;
                 Vec2::new(x, -stats.speed * 0.5)
@@ -334,10 +336,7 @@ fn enemy_shooting(
 }
 
 /// Remove enemies that go off screen
-fn enemy_bounds_check(
-    mut commands: Commands,
-    query: Query<(Entity, &Transform), With<Enemy>>,
-) {
+fn enemy_bounds_check(mut commands: Commands, query: Query<(Entity, &Transform), With<Enemy>>) {
     let margin = 100.0;
     for (entity, transform) in query.iter() {
         let pos = transform.translation;
@@ -386,16 +385,13 @@ fn update_enemy_ship_rotation(
                 let x = (ai.timer * 0.5).cos() * stats.speed * 0.3;
                 Vec2::new(x, 0.0)
             }
-            EnemyBehavior::Tank => {
-                Vec2::new(0.0, -stats.speed * 0.4)
-            }
+            EnemyBehavior::Tank => Vec2::new(0.0, -stats.speed * 0.4),
         };
 
         let target_rotation = model_rot.calculate_rotation(velocity, stats.speed);
-        transform.rotation = transform.rotation.slerp(
-            target_rotation,
-            (model_rot.smoothing * dt).min(1.0),
-        );
+        transform.rotation = transform
+            .rotation
+            .slerp(target_rotation, (model_rot.smoothing * dt).min(1.0));
     }
 }
 
@@ -474,11 +470,11 @@ pub fn spawn_enemy(
             _ => 10.0,
         },
         bullet_speed: match weapon_type {
-            WeaponType::Laser => 280.0,         // Fast beams
-            WeaponType::Railgun => 350.0,       // Fastest projectiles
+            WeaponType::Laser => 280.0,           // Fast beams
+            WeaponType::Railgun => 350.0,         // Fastest projectiles
             WeaponType::MissileLauncher => 180.0, // Slow missiles
-            WeaponType::Drone => 200.0,         // Medium
-            WeaponType::Autocannon => 250.0,    // Fast bullets
+            WeaponType::Drone => 200.0,           // Medium
+            WeaponType::Autocannon => 250.0,      // Fast bullets
             _ => 200.0,
         },
         cooldown: 0.5 + fastrand::f32() * 1.0, // Random initial delay
@@ -487,11 +483,11 @@ pub fn spawn_enemy(
 
     // Liberation value based on ship class
     let liberation = match type_id {
-        20185 => 5,     // Bestower (transport) - more slaves
-        2006 => 3,      // Apocalypse - capital crew
-        24690 => 2,     // Harbinger/Absolution - larger crew
-        24692 => 3,     // Abaddon - battleship
-        _ => 1,         // Regular frigates/cruisers
+        20185 => 5, // Bestower (transport) - more slaves
+        2006 => 3,  // Apocalypse - capital crew
+        24690 => 2, // Harbinger/Absolution - larger crew
+        24692 => 3, // Abaddon - battleship
+        _ => 1,     // Regular frigates/cruisers
     };
 
     let stats = EnemyStats {
@@ -513,33 +509,37 @@ pub fn spawn_enemy(
 
     // Use sprites (2D camera compatible)
     if let Some(texture) = sprite {
-        commands.spawn((
-            Enemy,
-            stats,
-            weapon,
-            ai,
-            Sprite {
-                image: texture,
-                custom_size: Some(Vec2::new(48.0, 48.0)),
-                flip_y: true, // Flip to face downward
-                ..default()
-            },
-            Transform::from_xyz(position.x, position.y, LAYER_ENEMIES),
-        )).id()
+        commands
+            .spawn((
+                Enemy,
+                stats,
+                weapon,
+                ai,
+                Sprite {
+                    image: texture,
+                    custom_size: Some(Vec2::new(48.0, 48.0)),
+                    flip_y: true, // Flip to face downward
+                    ..default()
+                },
+                Transform::from_xyz(position.x, position.y, LAYER_ENEMIES),
+            ))
+            .id()
     } else {
         // Color fallback
-        commands.spawn((
-            Enemy,
-            stats,
-            weapon,
-            ai,
-            Sprite {
-                color: base_color,
-                custom_size: Some(Vec2::new(40.0, 48.0)),
-                ..default()
-            },
-            Transform::from_xyz(position.x, position.y, LAYER_ENEMIES),
-        )).id()
+        commands
+            .spawn((
+                Enemy,
+                stats,
+                weapon,
+                ai,
+                Sprite {
+                    color: base_color,
+                    custom_size: Some(Vec2::new(40.0, 48.0)),
+                    ..default()
+                },
+                Transform::from_xyz(position.x, position.y, LAYER_ENEMIES),
+            ))
+            .id()
     }
 }
 
@@ -590,15 +590,22 @@ pub fn spawn_kamikaze(
     model_cache: Option<&ShipModelCache>,
 ) -> Entity {
     let type_id = 589; // Executioner - fast, aggressive
-    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Kamikaze, sprite, model_cache);
+    let entity = spawn_enemy(
+        commands,
+        type_id,
+        position,
+        EnemyBehavior::Kamikaze,
+        sprite,
+        model_cache,
+    );
 
     // Boost stats for kamikaze
     commands.entity(entity).insert(EnemyStats {
         type_id,
         name: "Kamikaze".into(),
-        health: 15.0,  // Low health
+        health: 15.0, // Low health
         max_health: 15.0,
-        speed: 180.0,  // Very fast
+        speed: 180.0,     // Very fast
         score_value: 150, // Worth more
         is_boss: false,
         liberation_value: 1,
@@ -615,14 +622,21 @@ pub fn spawn_weaver(
     model_cache: Option<&ShipModelCache>,
 ) -> Entity {
     let type_id = 602; // Kestrel - agile
-    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Weaver, sprite, model_cache);
+    let entity = spawn_enemy(
+        commands,
+        type_id,
+        position,
+        EnemyBehavior::Weaver,
+        sprite,
+        model_cache,
+    );
 
     commands.entity(entity).insert(EnemyStats {
         type_id,
         name: "Weaver".into(),
         health: 25.0,
         max_health: 25.0,
-        speed: 140.0,  // Fast
+        speed: 140.0, // Fast
         score_value: 120,
         is_boss: false,
         liberation_value: 1,
@@ -639,14 +653,21 @@ pub fn spawn_sniper(
     model_cache: Option<&ShipModelCache>,
 ) -> Entity {
     let type_id = 603; // Merlin - Caldari, railgun platform
-    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Sniper, sprite, model_cache);
+    let entity = spawn_enemy(
+        commands,
+        type_id,
+        position,
+        EnemyBehavior::Sniper,
+        sprite,
+        model_cache,
+    );
 
     commands.entity(entity).insert(EnemyStats {
         type_id,
         name: "Sniper".into(),
         health: 35.0,
         max_health: 35.0,
-        speed: 50.0,   // Slow
+        speed: 50.0, // Slow
         score_value: 130,
         is_boss: false,
         liberation_value: 1,
@@ -673,14 +694,21 @@ pub fn spawn_spawner_enemy(
     model_cache: Option<&ShipModelCache>,
 ) -> Entity {
     let type_id = 593; // Tristan - drone boat
-    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Spawner, sprite, model_cache);
+    let entity = spawn_enemy(
+        commands,
+        type_id,
+        position,
+        EnemyBehavior::Spawner,
+        sprite,
+        model_cache,
+    );
 
     commands.entity(entity).insert(EnemyStats {
         type_id,
         name: "Carrier".into(),
-        health: 80.0,   // Tanky
+        health: 80.0, // Tanky
         max_health: 80.0,
-        speed: 40.0,    // Very slow
+        speed: 40.0, // Very slow
         score_value: 200,
         is_boss: false,
         liberation_value: 3, // More crew
@@ -706,14 +734,21 @@ pub fn spawn_tank(
     model_cache: Option<&ShipModelCache>,
 ) -> Entity {
     let type_id = 597; // Punisher - heavily armored
-    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Tank, sprite, model_cache);
+    let entity = spawn_enemy(
+        commands,
+        type_id,
+        position,
+        EnemyBehavior::Tank,
+        sprite,
+        model_cache,
+    );
 
     commands.entity(entity).insert(EnemyStats {
         type_id,
         name: "Juggernaut".into(),
-        health: 150.0,  // Very tanky
+        health: 150.0, // Very tanky
         max_health: 150.0,
-        speed: 35.0,    // Very slow
+        speed: 35.0, // Very slow
         score_value: 250,
         is_boss: false,
         liberation_value: 2,

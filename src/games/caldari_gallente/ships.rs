@@ -2,8 +2,8 @@
 //!
 //! Ship definitions for both factions - player and enemy rosters.
 
+use crate::games::{EnemyShipDef, FactionShipPool, ModuleShip};
 use bevy::prelude::*;
-use crate::games::{ModuleShip, FactionShipPool, EnemyShipDef};
 
 /// Ship pools for both Caldari and Gallente factions
 #[derive(Resource, Default)]

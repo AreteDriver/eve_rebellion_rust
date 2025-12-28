@@ -2,15 +2,15 @@
 //!
 //! HUD, menus, and visual feedback.
 
+pub mod backgrounds;
+pub mod capacitor;
 pub mod hud;
 pub mod menu;
-pub mod capacitor;
-pub mod backgrounds;
 
+pub use backgrounds::*;
+pub use capacitor::*;
 pub use hud::*;
 pub use menu::*;
-pub use capacitor::*;
-pub use backgrounds::*;
 
 use bevy::prelude::*;
 

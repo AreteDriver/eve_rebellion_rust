@@ -2,18 +2,18 @@
 //!
 //! All game entities: player, enemies, projectiles, collectibles, etc.
 
-pub mod player;
-pub mod enemy;
-pub mod projectile;
-pub mod collectible;
 pub mod boss;
+pub mod collectible;
+pub mod enemy;
+pub mod player;
+pub mod projectile;
 pub mod wingman;
 
-pub use player::*;
-pub use enemy::*;
-pub use projectile::*;
-pub use collectible::*;
 pub use boss::*;
+pub use collectible::*;
+pub use enemy::*;
+pub use player::*;
+pub use projectile::*;
 pub use wingman::*;
 
 use bevy::prelude::*;

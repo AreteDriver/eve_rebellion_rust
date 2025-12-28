@@ -2,10 +2,10 @@
 //!
 //! Caldari vs Gallente faction warfare over Caldari Prime.
 
-use bevy::prelude::*;
+use super::{ActiveModule, FactionInfo, GameModuleInfo, ModuleRegistry};
 use crate::core::GameState;
 use crate::systems::JoystickState;
-use super::{ModuleRegistry, GameModuleInfo, FactionInfo, ActiveModule};
+use bevy::prelude::*;
 
 pub mod campaign;
 pub mod ships;
@@ -171,11 +171,24 @@ fn spawn_faction_select(mut commands: Commands) {
         });
 }
 
-fn spawn_faction_panel(parent: &mut ChildBuilder, faction: &'static str, name: &str, is_caldari: bool) {
+fn spawn_faction_panel(
+    parent: &mut ChildBuilder,
+    faction: &'static str,
+    name: &str,
+    is_caldari: bool,
+) {
     let (primary, secondary, accent) = if is_caldari {
-        (COLOR_CALDARI_PRIMARY, COLOR_CALDARI_SECONDARY, COLOR_CALDARI_ACCENT)
+        (
+            COLOR_CALDARI_PRIMARY,
+            COLOR_CALDARI_SECONDARY,
+            COLOR_CALDARI_ACCENT,
+        )
     } else {
-        (COLOR_GALLENTE_PRIMARY, COLOR_GALLENTE_SECONDARY, COLOR_GALLENTE_ACCENT)
+        (
+            COLOR_GALLENTE_PRIMARY,
+            COLOR_GALLENTE_SECONDARY,
+            COLOR_GALLENTE_ACCENT,
+        )
     };
 
     let doctrine = if is_caldari {
@@ -207,29 +220,31 @@ fn spawn_faction_panel(parent: &mut ChildBuilder, faction: &'static str, name: &
         ))
         .with_children(|panel| {
             // Faction emblem placeholder (colored square)
-            panel.spawn((
-                Node {
-                    width: Val::Px(120.0),
-                    height: Val::Px(120.0),
-                    border: UiRect::all(Val::Px(3.0)),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                BackgroundColor(primary),
-                BorderColor(accent),
-            )).with_children(|emblem| {
-                // Faction initial
-                let initial = if is_caldari { "C" } else { "G" };
-                emblem.spawn((
-                    Text::new(initial),
-                    TextFont {
-                        font_size: 72.0,
+            panel
+                .spawn((
+                    Node {
+                        width: Val::Px(120.0),
+                        height: Val::Px(120.0),
+                        border: UiRect::all(Val::Px(3.0)),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
                         ..default()
                     },
-                    TextColor(accent),
-                ));
-            });
+                    BackgroundColor(primary),
+                    BorderColor(accent),
+                ))
+                .with_children(|emblem| {
+                    // Faction initial
+                    let initial = if is_caldari { "C" } else { "G" };
+                    emblem.spawn((
+                        Text::new(initial),
+                        TextFont {
+                            font_size: 72.0,
+                            ..default()
+                        },
+                        TextColor(accent),
+                    ));
+                });
 
             // Faction name
             panel.spawn((
@@ -243,13 +258,11 @@ fn spawn_faction_panel(parent: &mut ChildBuilder, faction: &'static str, name: &
 
             // Doctrine tags
             panel
-                .spawn((
-                    Node {
-                        flex_direction: FlexDirection::Row,
-                        column_gap: Val::Px(15.0),
-                        ..default()
-                    },
-                ))
+                .spawn((Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(15.0),
+                    ..default()
+                },))
                 .with_children(|tags| {
                     for tag in doctrine {
                         tags.spawn((
@@ -304,8 +317,12 @@ fn faction_select_input(
 
     // Navigation
     if state.cooldown <= 0.0 {
-        let move_left = keyboard.pressed(KeyCode::ArrowLeft) || keyboard.pressed(KeyCode::KeyA) || joystick.dpad_x < 0;
-        let move_right = keyboard.pressed(KeyCode::ArrowRight) || keyboard.pressed(KeyCode::KeyD) || joystick.dpad_x > 0;
+        let move_left = keyboard.pressed(KeyCode::ArrowLeft)
+            || keyboard.pressed(KeyCode::KeyA)
+            || joystick.dpad_x < 0;
+        let move_right = keyboard.pressed(KeyCode::ArrowRight)
+            || keyboard.pressed(KeyCode::KeyD)
+            || joystick.dpad_x > 0;
 
         if move_left && state.selected > 0 {
             state.selected = 0;

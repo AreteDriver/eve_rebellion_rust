@@ -2,8 +2,8 @@
 //!
 //! Loads and displays background images for menus and gameplay.
 
-use bevy::prelude::*;
 use crate::core::*;
+use bevy::prelude::*;
 
 /// Background plugin
 pub struct BackgroundPlugin;
@@ -34,10 +34,7 @@ pub struct BackgroundAssets {
 pub struct MenuBackground;
 
 /// Load background images
-fn load_backgrounds(
-    mut backgrounds: ResMut<BackgroundAssets>,
-    asset_server: Res<AssetServer>,
-) {
+fn load_backgrounds(mut backgrounds: ResMut<BackgroundAssets>, asset_server: Res<AssetServer>) {
     backgrounds.title = Some(asset_server.load("backgrounds/title_background.png"));
     info!("Loading background images...");
 }
@@ -75,10 +72,7 @@ fn spawn_title_background(
 }
 
 /// Despawn menu background when leaving menu states
-fn despawn_menu_background(
-    mut commands: Commands,
-    query: Query<Entity, With<MenuBackground>>,
-) {
+fn despawn_menu_background(mut commands: Commands, query: Query<Entity, With<MenuBackground>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn();
     }

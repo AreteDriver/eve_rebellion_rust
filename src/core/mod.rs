@@ -6,14 +6,14 @@
 //! - Custom events
 //! - Game constants
 
+pub mod campaign;
+pub mod constants;
+pub mod events;
 pub mod game_state;
 pub mod resources;
-pub mod events;
-pub mod constants;
-pub mod campaign;
 
+pub use campaign::*;
+pub use constants::*;
+pub use events::*;
 pub use game_state::*;
 pub use resources::*;
-pub use events::*;
-pub use constants::*;
-pub use campaign::*;

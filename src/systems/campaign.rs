@@ -2,44 +2,36 @@
 //!
 //! Manages mission flow, wave spawning, and boss fights.
 
-use bevy::prelude::*;
-use crate::core::*;
+use crate::assets::{ShipModelCache, ShipSpriteCache};
 use crate::core::events::BossDefeatedEvent;
-use crate::entities::{spawn_enemy, spawn_boss, Boss, BossData, BossState, Enemy, EnemyBehavior};
-use crate::assets::{ShipSpriteCache, ShipModelCache};
+use crate::core::*;
+use crate::entities::{spawn_boss, spawn_enemy, Boss, BossData, BossState, Enemy, EnemyBehavior};
+use bevy::prelude::*;
 
 /// Campaign system plugin
 pub struct CampaignPlugin;
 
 impl Plugin for CampaignPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            OnEnter(GameState::Playing),
-            start_mission,
-        )
-        .add_systems(
-            Update,
-            (
-                update_mission_timer,
-                check_wave_complete,
-                spawn_next_wave,
-                update_boss_behavior,
-                check_boss_defeated,
-                check_mission_complete,
-            ).run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            OnEnter(GameState::BossIntro),
-            spawn_mission_boss,
-        )
-        .add_systems(
-            Update,
-            boss_intro_sequence.run_if(in_state(GameState::BossIntro)),
-        )
-        .add_systems(
-            OnEnter(GameState::BossFight),
-            start_boss_fight,
-        );
+        app.add_systems(OnEnter(GameState::Playing), start_mission)
+            .add_systems(
+                Update,
+                (
+                    update_mission_timer,
+                    check_wave_complete,
+                    spawn_next_wave,
+                    update_boss_behavior,
+                    check_boss_defeated,
+                    check_mission_complete,
+                )
+                    .run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(OnEnter(GameState::BossIntro), spawn_mission_boss)
+            .add_systems(
+                Update,
+                boss_intro_sequence.run_if(in_state(GameState::BossIntro)),
+            )
+            .add_systems(OnEnter(GameState::BossFight), start_boss_fight);
     }
 }
 
@@ -62,10 +54,7 @@ fn start_mission(
 }
 
 /// Update mission timer
-fn update_mission_timer(
-    time: Res<Time>,
-    mut campaign: ResMut<CampaignState>,
-) {
+fn update_mission_timer(time: Res<Time>, mut campaign: ResMut<CampaignState>) {
     if campaign.in_mission {
         campaign.mission_timer += time.delta_secs();
     }
@@ -137,7 +126,7 @@ fn spawn_next_wave(
 
     // Enemy types based on mission act
     let enemy_types: &[u32] = match campaign.act {
-        Act::Act1 => &[597, 589, 591],  // Punisher, Executioner, Tormentor
+        Act::Act1 => &[597, 589, 591], // Punisher, Executioner, Tormentor
         Act::Act2 => &[597, 589, 591, 2006], // + Apocalypse variant
         Act::Act3 => &[597, 589, 2006, 24690], // + Harbinger
     };
@@ -180,7 +169,12 @@ fn spawn_mission_boss(
     // Use stage number based on mission number
     let stage = campaign.mission_number() as u32;
 
-    if spawn_boss(&mut commands, stage, Some(&sprite_cache), Some(&model_cache)) {
+    if spawn_boss(
+        &mut commands,
+        stage,
+        Some(&sprite_cache),
+        Some(&model_cache),
+    ) {
         campaign.boss_spawned = true;
         boss_events.send(BossSpawnEvent {
             boss_type: mission.boss,
@@ -218,9 +212,7 @@ fn boss_intro_sequence(
 }
 
 /// Start boss fight phase
-fn start_boss_fight(
-    mut boss_query: Query<&mut BossState, With<Boss>>,
-) {
+fn start_boss_fight(mut boss_query: Query<&mut BossState, With<Boss>>) {
     for mut state in boss_query.iter_mut() {
         *state = BossState::Battle;
     }
@@ -229,13 +221,16 @@ fn start_boss_fight(
 /// Update boss behavior during fight
 fn update_boss_behavior(
     time: Res<Time>,
-    mut boss_query: Query<(
-        &mut Transform,
-        &mut BossData,
-        &mut crate::entities::boss::BossMovement,
-        &mut crate::entities::boss::BossAttack,
-        &BossState,
-    ), With<Boss>>,
+    mut boss_query: Query<
+        (
+            &mut Transform,
+            &mut BossData,
+            &mut crate::entities::boss::BossMovement,
+            &mut crate::entities::boss::BossAttack,
+            &BossState,
+        ),
+        With<Boss>,
+    >,
     player_query: Query<&Transform, (With<crate::entities::Player>, Without<Boss>)>,
     mut commands: Commands,
 ) {
@@ -281,10 +276,8 @@ fn update_boss_behavior(
 
         // Check for phase transitions
         let health_percent = data.health / data.max_health;
-        let phase_threshold = crate::entities::boss::get_phase_threshold(
-            data.current_phase + 1,
-            data.total_phases,
-        );
+        let phase_threshold =
+            crate::entities::boss::get_phase_threshold(data.current_phase + 1, data.total_phases);
 
         if health_percent <= phase_threshold && data.current_phase < data.total_phases {
             data.current_phase += 1;

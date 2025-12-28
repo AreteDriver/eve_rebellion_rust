@@ -3,10 +3,10 @@
 //! Allied Rifter frigates that assist the player during combat.
 //! Rifter special ability: spawn wingman every 15 kills.
 
-use bevy::prelude::*;
+use super::{Player, PlayerProjectile, ProjectileDamage, ProjectilePhysics};
+use crate::assets::{get_model_scale, ShipModelCache, ShipModelRotation};
 use crate::core::*;
-use crate::assets::{ShipModelCache, ShipModelRotation, get_model_scale};
-use super::{Player, PlayerProjectile, ProjectilePhysics, ProjectileDamage};
+use bevy::prelude::*;
 
 /// Marker for wingman entities
 #[derive(Component, Debug)]
@@ -85,16 +85,16 @@ pub struct WingmanPlugin;
 
 impl Plugin for WingmanPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(WingmanTracker::new())
-            .add_systems(
-                Update,
-                (
-                    track_kills_for_wingman,
-                    wingman_follow_player,
-                    wingman_shooting,
-                    wingman_damage,
-                ).run_if(in_state(GameState::Playing)),
-            );
+        app.insert_resource(WingmanTracker::new()).add_systems(
+            Update,
+            (
+                track_kills_for_wingman,
+                wingman_follow_player,
+                wingman_shooting,
+                wingman_damage,
+            )
+                .run_if(in_state(GameState::Playing)),
+        );
     }
 }
 
@@ -146,7 +146,13 @@ fn track_kills_for_wingman(
                 }
             }
 
-            spawn_wingman(&mut commands, player_pos, offset_x, Some(&sprite_cache), Some(&model_cache));
+            spawn_wingman(
+                &mut commands,
+                player_pos,
+                offset_x,
+                Some(&sprite_cache),
+                Some(&model_cache),
+            );
             info!("Wingman spawned! (offset: {})", offset_x);
         }
     }
@@ -169,19 +175,21 @@ pub fn spawn_wingman(
             let model_rot = ShipModelRotation::new_player();
             let scale = get_model_scale(rifter_type_id) * 40.0; // Slightly smaller than player
 
-            return commands.spawn((
-                Wingman,
-                WingmanStats {
-                    offset_x,
-                    ..default()
-                },
-                WingmanWeapon::default(),
-                model_rot.clone(),
-                SceneRoot(scene_handle),
-                Transform::from_xyz(spawn_pos.x, spawn_pos.y, 0.0)
-                    .with_scale(Vec3::splat(scale))
-                    .with_rotation(model_rot.base_rotation),
-            )).id();
+            return commands
+                .spawn((
+                    Wingman,
+                    WingmanStats {
+                        offset_x,
+                        ..default()
+                    },
+                    WingmanWeapon::default(),
+                    model_rot.clone(),
+                    SceneRoot(scene_handle),
+                    Transform::from_xyz(spawn_pos.x, spawn_pos.y, 0.0)
+                        .with_scale(Vec3::splat(scale))
+                        .with_rotation(model_rot.base_rotation),
+                ))
+                .id();
         }
     }
 
@@ -208,16 +216,18 @@ pub fn spawn_wingman(
         }
     };
 
-    commands.spawn((
-        Wingman,
-        WingmanStats {
-            offset_x,
-            ..default()
-        },
-        WingmanWeapon::default(),
-        sprite,
-        Transform::from_xyz(spawn_pos.x, spawn_pos.y, LAYER_PLAYER),
-    )).id()
+    commands
+        .spawn((
+            Wingman,
+            WingmanStats {
+                offset_x,
+                ..default()
+            },
+            WingmanWeapon::default(),
+            sprite,
+            Transform::from_xyz(spawn_pos.x, spawn_pos.y, LAYER_PLAYER),
+        ))
+        .id()
 }
 
 /// Wingmen follow the player
@@ -248,14 +258,14 @@ fn wingman_follow_player(
         }
 
         // Clamp to screen
-        transform.translation.x = transform.translation.x.clamp(
-            -SCREEN_WIDTH / 2.0 + 20.0,
-            SCREEN_WIDTH / 2.0 - 20.0,
-        );
-        transform.translation.y = transform.translation.y.clamp(
-            -SCREEN_HEIGHT / 2.0 + 20.0,
-            SCREEN_HEIGHT / 2.0 - 20.0,
-        );
+        transform.translation.x = transform
+            .translation
+            .x
+            .clamp(-SCREEN_WIDTH / 2.0 + 20.0, SCREEN_WIDTH / 2.0 - 20.0);
+        transform.translation.y = transform
+            .translation
+            .y
+            .clamp(-SCREEN_HEIGHT / 2.0 + 20.0, SCREEN_HEIGHT / 2.0 - 20.0);
     }
 }
 

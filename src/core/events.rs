@@ -107,10 +107,10 @@ pub struct PlaySoundEvent {
 /// Damage types (EVE Online style)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DamageType {
-    EM,         // Lasers, smartbombs
-    Thermal,    // Lasers, some missiles
-    Kinetic,    // Projectiles, railguns
-    Explosive,  // Missiles, artillery
+    EM,        // Lasers, smartbombs
+    Thermal,   // Lasers, some missiles
+    Kinetic,   // Projectiles, railguns
+    Explosive, // Missiles, artillery
 }
 
 /// Weapon types
@@ -138,27 +138,27 @@ pub enum SpawnPattern {
 /// Collectible types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CollectibleType {
-    LiberationPod,  // Freed slave - collect to liberate
+    LiberationPod, // Freed slave - collect to liberate
     Credits,
     ShieldBoost,
     ArmorRepair,
     HullRepair,
     CapacitorCharge,
-    Overdrive,      // Temporary speed boost
-    DamageBoost,    // Temporary damage boost
+    Overdrive,       // Temporary speed boost
+    DamageBoost,     // Temporary damage boost
     Invulnerability, // Temporary invincibility
-    Nanite,         // Reduces weapon heat
+    Nanite,          // Reduces weapon heat
     ExtraLife,
 }
 
 /// Explosion sizes for visual effects
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExplosionSize {
-    Tiny,       // Bullet impact
-    Small,      // Frigate explosion
-    Medium,     // Cruiser explosion
-    Large,      // Battleship explosion
-    Massive,    // Boss explosion
+    Tiny,    // Bullet impact
+    Small,   // Frigate explosion
+    Medium,  // Cruiser explosion
+    Large,   // Battleship explosion
+    Massive, // Boss explosion
 }
 
 /// Sound effect types
@@ -187,7 +187,7 @@ pub enum SoundType {
 
     // Gameplay
     PowerUp,
-    Liberation,  // Soul liberated
+    Liberation, // Soul liberated
     BerserkActivate,
     Warning,
     Victory,

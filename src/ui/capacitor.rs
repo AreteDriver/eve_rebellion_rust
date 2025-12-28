@@ -11,7 +11,7 @@ use bevy_egui::{egui, EguiContexts};
 use std::f32::consts::PI;
 
 use crate::core::*;
-use crate::entities::{Player, ShipStats, Movement};
+use crate::entities::{Movement, Player, ShipStats};
 use crate::systems::ComboHeatSystem;
 
 /// Capacitor wheel plugin
@@ -19,14 +19,13 @@ pub struct CapacitorWheelPlugin;
 
 impl Plugin for CapacitorWheelPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<CapacitorAnimation>()
-            .add_systems(
-                Update,
-                (update_capacitor_animation, draw_capacitor_wheel)
-                    .chain()
-                    .run_if(in_state(GameState::Playing))
-                    .after(bevy_egui::EguiSet::ProcessInput),
-            );
+        app.init_resource::<CapacitorAnimation>().add_systems(
+            Update,
+            (update_capacitor_animation, draw_capacitor_wheel)
+                .chain()
+                .run_if(in_state(GameState::Playing))
+                .after(bevy_egui::EguiSet::ProcessInput),
+        );
     }
 }
 
@@ -106,20 +105,39 @@ fn draw_capacitor_wheel(
 
     // Draw using egui Area (positioned overlay)
     egui::Area::new(egui::Id::new("capacitor_wheel"))
-        .fixed_pos(egui::pos2(center_x - wheel_radius - 40.0, center_y - wheel_radius - 20.0))
+        .fixed_pos(egui::pos2(
+            center_x - wheel_radius - 40.0,
+            center_y - wheel_radius - 20.0,
+        ))
         .show(ctx, |ui| {
             let size = egui::vec2((wheel_radius + 40.0) * 2.0, (wheel_radius + 35.0) * 2.0);
             let (response, painter) = ui.allocate_painter(size, egui::Sense::hover());
             let center = egui::pos2(response.rect.center().x, response.rect.center().y - 5.0);
 
             // === DARK BACKGROUND CIRCLE ===
-            painter.circle_filled(center, wheel_radius + 5.0, egui::Color32::from_rgba_unmultiplied(15, 18, 25, 245));
-            painter.circle_stroke(center, wheel_radius + 5.0, egui::Stroke::new(1.0, egui::Color32::from_rgb(45, 50, 60)));
+            painter.circle_filled(
+                center,
+                wheel_radius + 5.0,
+                egui::Color32::from_rgba_unmultiplied(15, 18, 25, 245),
+            );
+            painter.circle_stroke(
+                center,
+                wheel_radius + 5.0,
+                egui::Stroke::new(1.0, egui::Color32::from_rgb(45, 50, 60)),
+            );
 
             // === INNER DARK CIRCLE (for speed display) ===
             let inner_radius = 20.0;
-            painter.circle_filled(center, inner_radius, egui::Color32::from_rgba_unmultiplied(25, 32, 45, 230));
-            painter.circle_stroke(center, inner_radius, egui::Stroke::new(0.8, egui::Color32::from_rgb(55, 65, 80)));
+            painter.circle_filled(
+                center,
+                inner_radius,
+                egui::Color32::from_rgba_unmultiplied(25, 32, 45, 230),
+            );
+            painter.circle_stroke(
+                center,
+                inner_radius,
+                egui::Stroke::new(0.8, egui::Color32::from_rgb(55, 65, 80)),
+            );
 
             // === HEALTH ARCS (semicircular at top, EVE style) ===
             // The arcs span from left to right over the top (like EVE)
@@ -128,25 +146,33 @@ fn draw_capacitor_wheel(
             let arc_width = 6.0;
             let arc_gap = 2.5;
             let arc_start = -PI; // Start from left
-            let arc_end = 0.0;   // End at right (top semicircle)
+            let arc_end = 0.0; // End at right (top semicircle)
 
             // Shield arc (outermost) - grayish-white
             let shield_radius = wheel_radius - 3.0;
             draw_eve_health_arc(
-                &painter, center, shield_radius, arc_width,
+                &painter,
+                center,
+                shield_radius,
+                arc_width,
                 shield_pct,
-                arc_start, arc_end,
+                arc_start,
+                arc_end,
                 egui::Color32::from_rgb(200, 210, 220), // Filled
                 egui::Color32::from_rgb(50, 55, 65),    // Empty
-                22, // segments
+                22,                                     // segments
             );
 
             // Armor arc (middle) - grayish-white
             let armor_radius = shield_radius - arc_width - arc_gap;
             draw_eve_health_arc(
-                &painter, center, armor_radius, arc_width,
+                &painter,
+                center,
+                armor_radius,
+                arc_width,
                 armor_pct,
-                arc_start, arc_end,
+                arc_start,
+                arc_end,
                 egui::Color32::from_rgb(190, 195, 205),
                 egui::Color32::from_rgb(45, 50, 60),
                 18,
@@ -155,16 +181,28 @@ fn draw_capacitor_wheel(
             // Structure arc (innermost) - grayish-white
             let structure_radius = armor_radius - arc_width - arc_gap;
             draw_eve_health_arc(
-                &painter, center, structure_radius, arc_width,
+                &painter,
+                center,
+                structure_radius,
+                arc_width,
                 hull_pct,
-                arc_start, arc_end,
+                arc_start,
+                arc_end,
                 egui::Color32::from_rgb(180, 185, 195),
                 egui::Color32::from_rgb(40, 45, 55),
                 14,
             );
 
             // === CENTRAL CAPACITOR "SUN" ===
-            draw_capacitor_sun(&painter, center, inner_radius - 3.0, cap_pct, heat_pct, anim.rotation, anim.pulse);
+            draw_capacitor_sun(
+                &painter,
+                center,
+                inner_radius - 3.0,
+                cap_pct,
+                heat_pct,
+                anim.rotation,
+                anim.pulse,
+            );
 
             // === PERCENTAGE TEXT (left side, stacked vertically) ===
             let text_x = center.x - wheel_radius - 22.0;
@@ -287,9 +325,21 @@ fn draw_eve_health_arc(
             (num_segments - i - 1) < (filled_segments + 1) / 2
         };
 
-        let color = if is_filled || fill_pct >= 1.0 { fill_color } else { empty_color };
+        let color = if is_filled || fill_pct >= 1.0 {
+            fill_color
+        } else {
+            empty_color
+        };
 
-        draw_arc_segment(painter, center, radius, width, angle_start, segment_arc, color);
+        draw_arc_segment(
+            painter,
+            center,
+            radius,
+            width,
+            angle_start,
+            segment_arc,
+            color,
+        );
     }
 }
 
@@ -330,7 +380,11 @@ fn draw_arc_segment(
     }
 
     if points.len() >= 3 {
-        painter.add(egui::Shape::convex_polygon(points, color, egui::Stroke::NONE));
+        painter.add(egui::Shape::convex_polygon(
+            points,
+            color,
+            egui::Stroke::NONE,
+        ));
     }
 }
 
@@ -418,7 +472,11 @@ fn draw_capacitor_sun(
             ),
         ];
 
-        painter.add(egui::Shape::convex_polygon(points, color, egui::Stroke::NONE));
+        painter.add(egui::Shape::convex_polygon(
+            points,
+            color,
+            egui::Stroke::NONE,
+        ));
     }
 
     // Center dot (dark)

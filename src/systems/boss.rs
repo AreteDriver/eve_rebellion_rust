@@ -2,19 +2,19 @@
 //!
 //! Handles boss movement, attacks, phases, and defeat sequences.
 
-use bevy::prelude::*;
-use crate::core::*;
+use super::dialogue::DialogueEvent;
+use super::effects::ScreenShake;
 use crate::assets::ShipModelCache;
-use crate::entities::{
-    Boss, BossData, BossState, BossMovement, BossAttack, MovementPattern,
-    spawn_boss, get_phase_threshold,
-};
+use crate::core::*;
 use crate::entities::projectile::{
-    EnemyProjectile, EnemyProjectileBundle, ProjectilePhysics, ProjectileDamage,
+    EnemyProjectile, EnemyProjectileBundle, ProjectileDamage, ProjectilePhysics,
+};
+use crate::entities::{
+    get_phase_threshold, spawn_boss, Boss, BossAttack, BossData, BossMovement, BossState,
+    MovementPattern,
 };
 use crate::systems::ComboHeatSystem;
-use super::effects::ScreenShake;
-use super::dialogue::DialogueEvent;
+use bevy::prelude::*;
 
 /// Boss system plugin
 pub struct BossPlugin;
@@ -33,7 +33,8 @@ impl Plugin for BossPlugin {
                     boss_attack,
                     boss_phase_check,
                     boss_damage,
-                ).run_if(in_state(GameState::Playing)),
+                )
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }
@@ -82,7 +83,12 @@ fn handle_boss_spawn(
             continue;
         }
 
-        if spawn_boss(&mut commands, event.stage, Some(&sprite_cache), Some(&model_cache)) {
+        if spawn_boss(
+            &mut commands,
+            event.stage,
+            Some(&sprite_cache),
+            Some(&model_cache),
+        ) {
             encounter.active = true;
             encounter.intro_timer = 3.0; // 3 second intro
             encounter.name_shown = false;
@@ -97,7 +103,10 @@ fn handle_boss_spawn(
 fn boss_intro_sequence(
     time: Res<Time>,
     mut encounter: ResMut<BossEncounter>,
-    mut boss_query: Query<(&mut Transform, &mut BossState, &BossData, &mut BossMovement), With<Boss>>,
+    mut boss_query: Query<
+        (&mut Transform, &mut BossState, &BossData, &mut BossMovement),
+        With<Boss>,
+    >,
     mut dialogue_events: EventWriter<DialogueEvent>,
 ) {
     let dt = time.delta_secs();
@@ -231,7 +240,13 @@ fn boss_attack(
                     for i in 0..5 {
                         let angle = -0.4 + (i as f32 * 0.2);
                         let dir = Vec2::new(angle.sin(), -angle.cos());
-                        spawn_boss_projectile(&mut commands, boss_pos + dir * 40.0, dir, 200.0, 15.0);
+                        spawn_boss_projectile(
+                            &mut commands,
+                            boss_pos + dir * 40.0,
+                            dir,
+                            200.0,
+                            15.0,
+                        );
                     }
                     attack.fire_timer = 0.5;
                 }
@@ -240,7 +255,13 @@ fn boss_attack(
                     let sweep_angle = (time.elapsed_secs() * 3.0).sin() * 0.6;
                     let dir = Vec2::new(sweep_angle, -1.0).normalize();
                     for offset in [-30.0, 0.0, 30.0] {
-                        spawn_boss_projectile(&mut commands, boss_pos + Vec2::new(offset, -30.0), dir, 300.0, 15.0);
+                        spawn_boss_projectile(
+                            &mut commands,
+                            boss_pos + Vec2::new(offset, -30.0),
+                            dir,
+                            300.0,
+                            15.0,
+                        );
                     }
                     attack.fire_timer = 0.3;
                 }
@@ -262,13 +283,7 @@ fn boss_attack(
 }
 
 /// Spawn a boss projectile
-fn spawn_boss_projectile(
-    commands: &mut Commands,
-    pos: Vec2,
-    dir: Vec2,
-    speed: f32,
-    damage: f32,
-) {
+fn spawn_boss_projectile(commands: &mut Commands, pos: Vec2, dir: Vec2, speed: f32, damage: f32) {
     commands.spawn(EnemyProjectileBundle {
         marker: EnemyProjectile,
         physics: ProjectilePhysics {
@@ -290,7 +305,15 @@ fn spawn_boss_projectile(
 
 /// Check for phase transitions
 fn boss_phase_check(
-    mut boss_query: Query<(&mut BossData, &mut BossAttack, &mut BossState, &mut BossMovement), With<Boss>>,
+    mut boss_query: Query<
+        (
+            &mut BossData,
+            &mut BossAttack,
+            &mut BossState,
+            &mut BossMovement,
+        ),
+        With<Boss>,
+    >,
     mut encounter: ResMut<BossEncounter>,
     mut screen_shake: ResMut<ScreenShake>,
 ) {
@@ -351,7 +374,8 @@ fn get_phase_pattern(boss_id: u32, phase: u32) -> String {
         (_, 4) => "desperate_spray",
         (_, 5) => "doomsday",
         _ => "steady_beam",
-    }.to_string()
+    }
+    .to_string()
 }
 
 /// Handle boss taking damage
@@ -412,17 +436,18 @@ fn boss_damage(
                     ));
 
                     info!("BOSS DEFEATED: {}", data.name);
-                    info!("+{} score, +{} souls liberated", final_score, data.liberation_value);
+                    info!(
+                        "+{} score, +{} souls liberated",
+                        final_score, data.liberation_value
+                    );
 
                     // Massive screen shake
                     screen_shake.massive();
 
                     // Chain explosions across the boss
                     for i in 0..8 {
-                        let offset = Vec2::new(
-                            (i as f32 * 0.7).sin() * 40.0,
-                            (i as f32 * 1.3).cos() * 30.0,
-                        );
+                        let offset =
+                            Vec2::new((i as f32 * 0.7).sin() * 40.0, (i as f32 * 1.3).cos() * 30.0);
                         explosion_events.send(ExplosionEvent {
                             position: boss_pos + offset,
                             size: ExplosionSize::Massive,

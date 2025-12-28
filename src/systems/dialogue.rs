@@ -2,8 +2,8 @@
 //!
 //! Handles Elder dialogue display during gameplay.
 
-use bevy::prelude::*;
 use crate::core::*;
+use bevy::prelude::*;
 
 /// Dialogue plugin
 pub struct DialoguePlugin;
@@ -14,10 +14,8 @@ impl Plugin for DialoguePlugin {
             .add_event::<DialogueEvent>()
             .add_systems(
                 Update,
-                (
-                    handle_dialogue_events,
-                    update_dialogue_timer,
-                ).run_if(in_state(GameState::Playing)),
+                (handle_dialogue_events, update_dialogue_timer)
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }
@@ -207,10 +205,7 @@ fn handle_dialogue_events(
 }
 
 /// Update dialogue timer and process queue
-fn update_dialogue_timer(
-    time: Res<Time>,
-    mut dialogue: ResMut<DialogueSystem>,
-) {
+fn update_dialogue_timer(time: Res<Time>, mut dialogue: ResMut<DialogueSystem>) {
     if dialogue.active_text.is_some() {
         dialogue.timer -= time.delta_secs();
 
@@ -285,7 +280,8 @@ fn get_liberation_dialogue(count: u32) -> String {
         10000 => "Ten thousand souls freed by your hand. You are legend now.",
         25000 => "The Elders bow to you. Twenty-five thousand. A nation freed.",
         _ => "Souls freed. This is why we fight.",
-    }.to_string()
+    }
+    .to_string()
 }
 
 /// Get combat callout dialogue
@@ -298,7 +294,8 @@ fn get_combat_callout(callout: &CombatCalloutType) -> String {
         CombatCalloutType::BossLowHealth => "It weakens! Strike true!",
         CombatCalloutType::WaveIncoming => "More enemies approach. Steel yourself.",
         CombatCalloutType::LiberationPod => "A liberation pod! Collect it - a soul awaits freedom.",
-    }.to_string()
+    }
+    .to_string()
 }
 
 /// Get random success dialogue

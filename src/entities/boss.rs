@@ -2,10 +2,10 @@
 //!
 //! Stage bosses for the Elder Fleet campaign.
 
-use bevy::prelude::*;
-use crate::core::*;
-use crate::assets::{ShipModelCache, ShipModelRotation, get_model_scale};
 use super::player::Hitbox;
+use crate::assets::{get_model_scale, ShipModelCache, ShipModelRotation};
+use crate::core::*;
+use bevy::prelude::*;
 
 /// Marker component for bosses
 #[derive(Component)]
@@ -64,10 +64,10 @@ pub struct BossPhase {
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BossState {
     #[default]
-    Intro,      // Boss entering, name card showing
-    Battle,     // Active combat
+    Intro, // Boss entering, name card showing
+    Battle,          // Active combat
     PhaseTransition, // Changing phases
-    Defeated,   // Death sequence playing
+    Defeated,        // Death sequence playing
 }
 
 /// Boss movement pattern
@@ -415,7 +415,9 @@ pub fn spawn_boss(
                     BossState::Intro,
                     movement,
                     BossAttack::default(),
-                    Hitbox { radius: size / 2.0 * 0.8 },
+                    Hitbox {
+                        radius: size / 2.0 * 0.8,
+                    },
                     model_rot.clone(),
                     SceneRoot(scene_handle),
                     Transform::from_xyz(0.0, start_y, 0.0)
@@ -466,7 +468,9 @@ pub fn spawn_boss(
         state: BossState::Intro,
         movement,
         attack: BossAttack::default(),
-        hitbox: Hitbox { radius: size / 2.0 * 0.8 },
+        hitbox: Hitbox {
+            radius: size / 2.0 * 0.8,
+        },
         sprite,
         transform: Transform::from_xyz(0.0, start_y, LAYER_ENEMIES),
     });

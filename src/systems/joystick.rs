@@ -88,12 +88,20 @@ impl JoystickState {
         let mut y = -self.left_y; // Invert Y for game coordinates
 
         // Apply deadzone
-        if x.abs() < DEADZONE { x = 0.0; }
-        if y.abs() < DEADZONE { y = 0.0; }
+        if x.abs() < DEADZONE {
+            x = 0.0;
+        }
+        if y.abs() < DEADZONE {
+            y = 0.0;
+        }
 
         // Combine with dpad
-        if self.dpad_x != 0 { x = self.dpad_x as f32; }
-        if self.dpad_y != 0 { y = -self.dpad_y as f32; }
+        if self.dpad_x != 0 {
+            x = self.dpad_x as f32;
+        }
+        if self.dpad_y != 0 {
+            y = -self.dpad_y as f32;
+        }
 
         Vec2::new(x, y)
     }
@@ -176,9 +184,7 @@ fn setup_joystick(mut commands: Commands, mut state: ResMut<JoystickState>) {
 
             info!("Joystick connected: {}", JOYSTICK_DEVICE);
             state.connected = true;
-            commands.insert_resource(JoystickHandle {
-                file: Some(file),
-            });
+            commands.insert_resource(JoystickHandle { file: Some(file) });
         }
         Err(e) => {
             info!("No joystick found: {} ({})", JOYSTICK_DEVICE, e);
@@ -187,10 +193,7 @@ fn setup_joystick(mut commands: Commands, mut state: ResMut<JoystickState>) {
     }
 }
 
-fn poll_joystick(
-    mut handle: ResMut<JoystickHandle>,
-    mut state: ResMut<JoystickState>,
-) {
+fn poll_joystick(mut handle: ResMut<JoystickHandle>, mut state: ResMut<JoystickState>) {
     // Save previous state for edge detection
     state.prev_buttons = state.buttons;
     state.prev_dpad_x = state.dpad_x;
@@ -206,9 +209,7 @@ fn poll_joystick(
         match file.read_exact(&mut buffer) {
             Ok(_) => {
                 // Parse event
-                let event = unsafe {
-                    std::ptr::read(buffer.as_ptr() as *const JsEvent)
-                };
+                let event = unsafe { std::ptr::read(buffer.as_ptr() as *const JsEvent) };
 
                 let event_type = event.event_type & !JS_EVENT_INIT;
 
@@ -238,8 +239,24 @@ fn poll_joystick(
                             // Right trigger (RT) - axis 5
                             5 => state.right_trigger = (value + 1.0) / 2.0,
                             // D-pad as axes
-                            6 => state.dpad_x = if value < -0.5 { -1 } else if value > 0.5 { 1 } else { 0 },
-                            7 => state.dpad_y = if value < -0.5 { -1 } else if value > 0.5 { 1 } else { 0 },
+                            6 => {
+                                state.dpad_x = if value < -0.5 {
+                                    -1
+                                } else if value > 0.5 {
+                                    1
+                                } else {
+                                    0
+                                }
+                            }
+                            7 => {
+                                state.dpad_y = if value < -0.5 {
+                                    -1
+                                } else if value > 0.5 {
+                                    1
+                                } else {
+                                    0
+                                }
+                            }
                             _ => {}
                         }
                     }
