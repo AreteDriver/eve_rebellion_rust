@@ -10,6 +10,8 @@ pub enum GameState {
     #[default]
     Loading,
     MainMenu,
+    ModuleSelect,    // Choose game module (Elder Fleet, Caldari vs Gallente, etc.)
+    FactionSelect,   // Choose faction (for Caldari/Gallente module)
     DifficultySelect,
     ShipSelect,
     Playing,

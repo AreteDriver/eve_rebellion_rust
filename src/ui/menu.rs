@@ -6,6 +6,7 @@
 use bevy::prelude::*;
 use crate::core::*;
 use crate::systems::JoystickState;
+use crate::games::ActiveModule;
 
 /// Menu plugin
 pub struct MenuPlugin;
@@ -247,7 +248,7 @@ fn loading_progress(
 
 fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MenuSelection>) {
     selection.index = 0;
-    selection.total = 3;
+    selection.total = 4;
 
     commands
         .spawn((
@@ -290,9 +291,10 @@ fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MenuSelection>)
             });
 
             // Menu buttons
-            spawn_menu_item(parent, "START GAME", 0);
-            spawn_menu_item(parent, "OPTIONS", 1);
-            spawn_menu_item(parent, "QUIT", 2);
+            spawn_menu_item(parent, "ELDER FLEET CAMPAIGN", 0);
+            spawn_menu_item(parent, "CALDARI VS GALLENTE", 1);
+            spawn_menu_item(parent, "OPTIONS", 2);
+            spawn_menu_item(parent, "QUIT", 3);
 
             // Footer
             parent.spawn(Node {
@@ -310,7 +312,7 @@ fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MenuSelection>)
             ));
 
             parent.spawn((
-                Text::new("v0.2.0 - Rust/Bevy"),
+                Text::new("v0.3.0 - Multi-Campaign"),
                 TextFont {
                     font_size: 12.0,
                     ..default()
@@ -326,6 +328,7 @@ fn main_menu_input(
     mut selection: ResMut<MenuSelection>,
     time: Res<Time>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut active_module: ResMut<ActiveModule>,
     mut exit: EventWriter<AppExit>,
 ) {
     selection.cooldown -= time.delta_secs();
@@ -341,9 +344,18 @@ fn main_menu_input(
     // Selection
     if is_confirm(&keyboard, &joystick) {
         match selection.index {
-            0 => next_state.set(GameState::DifficultySelect),
-            1 => {} // Options - TODO
-            2 => { exit.send(AppExit::Success); }
+            0 => {
+                // Elder Fleet Campaign (original game)
+                active_module.set_module("elder_fleet");
+                next_state.set(GameState::DifficultySelect);
+            }
+            1 => {
+                // Caldari vs Gallente - go to faction select
+                active_module.set_module("caldari_gallente");
+                next_state.set(GameState::FactionSelect);
+            }
+            2 => {} // Options - TODO
+            3 => { exit.send(AppExit::Success); }
             _ => {}
         }
     }

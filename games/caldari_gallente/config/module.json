@@ -1,0 +1,276 @@
+{
+  "moduleId": "caldari_gallente",
+  "displayName": "Battle of Caldari Prime",
+  "subtitle": "The War for Caldari Prime",
+  "description": "Experience the brutal conflict between Caldari and Gallente forces over the contested homeworld.",
+  "version": "1.0.0",
+  "author": "EVE Rebellion Team",
+
+  "factions": [
+    {
+      "id": "caldari",
+      "name": "Caldari State",
+      "emblem": "caldari_emblem.png",
+      "primaryColor": "#1a4a7a",
+      "secondaryColor": "#4a9aca",
+      "accentColor": "#7acaca",
+      "doctrine": ["Missiles", "Shields", "Electronic Warfare"],
+      "description": "Corporate efficiency meets military precision. Shield-tanked missile platforms."
+    },
+    {
+      "id": "gallente",
+      "name": "Gallente Federation",
+      "emblem": "gallente_emblem.png",
+      "primaryColor": "#2a5a2a",
+      "secondaryColor": "#5aca5a",
+      "accentColor": "#8aea8a",
+      "doctrine": ["Drones", "Armor", "Hybrid Turrets"],
+      "description": "Freedom through firepower. Armor-tanked drone and blaster platforms."
+    }
+  ],
+
+  "shipPools": {
+    "caldari": {
+      "playerShips": [
+        {
+          "typeId": 11381,
+          "name": "Hawk",
+          "class": "Assault Frigate",
+          "role": "Missile Boat",
+          "unlocked": true,
+          "stats": {
+            "health": 100,
+            "speed": 120,
+            "fireRate": 0.3,
+            "damage": 18,
+            "unlimitedThrust": false
+          }
+        },
+        {
+          "typeId": 11387,
+          "name": "Harpy",
+          "class": "Assault Frigate",
+          "role": "Railgun Platform",
+          "unlocked": true,
+          "stats": {
+            "health": 90,
+            "speed": 130,
+            "fireRate": 0.25,
+            "damage": 22,
+            "unlimitedThrust": false
+          }
+        },
+        {
+          "typeId": 35683,
+          "name": "Jackdaw",
+          "class": "Tactical Destroyer",
+          "role": "Mode-Switching Platform",
+          "unlocked": false,
+          "unlockMission": 4,
+          "stats": {
+            "health": 150,
+            "speed": 100,
+            "fireRate": 0.35,
+            "damage": 25,
+            "unlimitedThrust": false
+          }
+        }
+      ],
+      "enemyShips": [
+        {
+          "typeId": 11373,
+          "name": "Enyo",
+          "class": "Assault Frigate",
+          "role": "Blaster Brawler",
+          "spawnWeight": 30
+        },
+        {
+          "typeId": 11371,
+          "name": "Ishkur",
+          "class": "Assault Frigate",
+          "role": "Drone Boat",
+          "spawnWeight": 30
+        },
+        {
+          "typeId": 11371,
+          "name": "Incursus",
+          "class": "Frigate",
+          "role": "Blaster Platform",
+          "spawnWeight": 25
+        },
+        {
+          "typeId": 593,
+          "name": "Tristan",
+          "class": "Frigate",
+          "role": "Drone Frigate",
+          "spawnWeight": 15
+        }
+      ]
+    },
+    "gallente": {
+      "playerShips": [
+        {
+          "typeId": 11373,
+          "name": "Enyo",
+          "class": "Assault Frigate",
+          "role": "Blaster Brawler",
+          "unlocked": true,
+          "stats": {
+            "health": 110,
+            "speed": 110,
+            "fireRate": 0.2,
+            "damage": 20,
+            "unlimitedThrust": false
+          }
+        },
+        {
+          "typeId": 11371,
+          "name": "Ishkur",
+          "class": "Assault Frigate",
+          "role": "Drone Boat",
+          "unlocked": true,
+          "stats": {
+            "health": 95,
+            "speed": 115,
+            "fireRate": 0.35,
+            "damage": 16,
+            "unlimitedThrust": false
+          }
+        },
+        {
+          "typeId": 35685,
+          "name": "Hecate",
+          "class": "Tactical Destroyer",
+          "role": "Mode-Switching Platform",
+          "unlocked": false,
+          "unlockMission": 4,
+          "stats": {
+            "health": 140,
+            "speed": 105,
+            "fireRate": 0.22,
+            "damage": 28,
+            "unlimitedThrust": false
+          }
+        }
+      ],
+      "enemyShips": [
+        {
+          "typeId": 11381,
+          "name": "Hawk",
+          "class": "Assault Frigate",
+          "role": "Missile Boat",
+          "spawnWeight": 30
+        },
+        {
+          "typeId": 11387,
+          "name": "Harpy",
+          "class": "Assault Frigate",
+          "role": "Railgun Platform",
+          "spawnWeight": 30
+        },
+        {
+          "typeId": 603,
+          "name": "Merlin",
+          "class": "Frigate",
+          "role": "Blaster Frigate",
+          "spawnWeight": 25
+        },
+        {
+          "typeId": 602,
+          "name": "Kestrel",
+          "class": "Frigate",
+          "role": "Missile Frigate",
+          "spawnWeight": 15
+        }
+      ]
+    }
+  },
+
+  "missions": [
+    {
+      "id": "cg_m1_orbital_skirmish",
+      "name": "ORBITAL SKIRMISH",
+      "description": "Federation forces probe Caldari orbital defenses. First contact.",
+      "primaryObjective": "Destroy enemy patrol ships",
+      "bonusObjective": "No damage taken",
+      "waves": 3,
+      "isTutorial": true,
+      "boss": null
+    },
+    {
+      "id": "cg_m2_urban_firefight",
+      "name": "URBAN FIREFIGHT",
+      "description": "Combat above Caldari Prime's cities. The skyline burns.",
+      "primaryObjective": "Clear the airspace",
+      "bonusObjective": "Protect civilian transports",
+      "waves": 4,
+      "boss": "PatrolCommander"
+    },
+    {
+      "id": "cg_m3_fleet_interdiction",
+      "name": "FLEET INTERDICTION",
+      "description": "Enemy reinforcements inbound. Intercept before they reach the front.",
+      "primaryObjective": "Destroy the convoy",
+      "bonusObjective": "Destroy all escorts first",
+      "waves": 5,
+      "boss": "FleetCommander"
+    },
+    {
+      "id": "cg_m4_escalation",
+      "name": "ESCALATION POINT",
+      "description": "Both sides commit heavier assets. T3 destroyers enter the fray.",
+      "primaryObjective": "Hold the line",
+      "bonusObjective": "Destroy elite squadron",
+      "waves": 6,
+      "unlocks": ["t3_destroyer"],
+      "boss": "EliteSquadron"
+    },
+    {
+      "id": "cg_m5_decisive_push",
+      "name": "DECISIVE PUSH",
+      "description": "The final battle for orbital superiority. No retreat.",
+      "primaryObjective": "Achieve air dominance",
+      "bonusObjective": "Perfect victory",
+      "waves": 8,
+      "boss": "FleetAdmiral"
+    }
+  ],
+
+  "epilogue": {
+    "caldari": {
+      "id": "cg_epilogue_shiigeru",
+      "name": "FINAL DIRECTIVE: SHIIGERU",
+      "description": "The Caldari titan Shiigeru falls. An endless nightmare aboard the dying vessel.",
+      "type": "endless",
+      "status": "TODO",
+      "notes": "Implement as endless survival mode aboard the burning titan as it plummets toward Caldari Prime."
+    }
+  },
+
+  "bosses": {
+    "PatrolCommander": {
+      "name": "PATROL COMMANDER",
+      "health": 400,
+      "phases": 2,
+      "typeId": 11381
+    },
+    "FleetCommander": {
+      "name": "FLEET COMMANDER",
+      "health": 700,
+      "phases": 3,
+      "typeId": 11387
+    },
+    "EliteSquadron": {
+      "name": "ELITE SQUADRON",
+      "health": 1000,
+      "phases": 3,
+      "typeId": 35683
+    },
+    "FleetAdmiral": {
+      "name": "FLEET ADMIRAL",
+      "health": 1500,
+      "phases": 4,
+      "typeId": 35685
+    }
+  }
+}

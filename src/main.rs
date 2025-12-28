@@ -11,6 +11,7 @@ mod entities;
 mod systems;
 mod ui;
 mod assets;
+mod games;
 
 use core::{
     GameState, GameEventsPlugin, ScoreSystem, BerserkSystem, GameProgress,
@@ -22,6 +23,7 @@ use entities::EntitiesPlugin;
 use systems::SystemsPlugin;
 use ui::UiPlugin;
 use assets::AssetsPlugin;
+use games::GameModulesPlugin;
 
 fn main() {
     App::new()
@@ -66,6 +68,7 @@ fn main() {
             EntitiesPlugin,
             SystemsPlugin,
             UiPlugin,
+            GameModulesPlugin,
         ))
 
         // Setup
