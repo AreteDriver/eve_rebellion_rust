@@ -21,10 +21,16 @@ pub enum EnemyBehavior {
     Homing,
     /// Circles around a point
     Orbital,
-    /// Stays at distance, strafes
+    /// Stays at distance, strafes horizontally, fires long-range
     Sniper,
-    /// Rushes toward player at high speed
+    /// Rushes toward player at high speed (suicide)
     Kamikaze,
+    /// Fast sine-wave pattern, harassing
+    Weaver,
+    /// Slow, spawns fighter escorts
+    Spawner,
+    /// Heavy armor, slow advance, absorbs damage
+    Tank,
 }
 
 /// Enemy stats
@@ -135,6 +141,33 @@ impl Default for EnemyAI {
     }
 }
 
+/// Spawner component for enemies that deploy fighters
+#[derive(Component, Debug)]
+pub struct EnemySpawner {
+    /// Time between spawns
+    pub spawn_rate: f32,
+    /// Spawn cooldown timer
+    pub spawn_timer: f32,
+    /// Type ID of spawned enemies
+    pub spawn_type_id: u32,
+    /// Max spawned at once
+    pub max_spawned: u32,
+    /// Currently spawned count
+    pub spawned_count: u32,
+}
+
+impl Default for EnemySpawner {
+    fn default() -> Self {
+        Self {
+            spawn_rate: 3.0,
+            spawn_timer: 2.0,
+            spawn_type_id: 589, // Executioner (small fighter)
+            max_spawned: 4,
+            spawned_count: 0,
+        }
+    }
+}
+
 /// Bundle for spawning an enemy
 #[derive(Bundle)]
 pub struct EnemyBundle {
@@ -174,6 +207,7 @@ impl Plugin for EnemyPlugin {
                 enemy_movement,
                 update_enemy_ship_rotation,
                 enemy_shooting,
+                spawner_update,
                 enemy_bounds_check,
             ).run_if(in_state(GameState::Playing)),
         );
@@ -222,8 +256,33 @@ fn enemy_movement(
                 Vec2::new(x, y_diff.signum() * stats.speed.min(y_diff.abs()))
             }
             EnemyBehavior::Kamikaze => {
+                // Suicide rush toward player at 2x speed
                 let dir = (player_pos - pos).normalize_or_zero();
                 dir * stats.speed * 2.0
+            }
+            EnemyBehavior::Weaver => {
+                // Fast sine-wave, wide amplitude, harassing movement
+                let amplitude = 200.0;
+                let frequency = 4.0;
+                let x = (ai.timer * frequency + ai.phase).sin() * amplitude * dt * 2.0;
+                Vec2::new(x, -stats.speed * 0.7)
+            }
+            EnemyBehavior::Spawner => {
+                // Slow descent, stays in upper area
+                let target_y = SCREEN_HEIGHT / 2.0 - 150.0;
+                if pos.y > target_y {
+                    Vec2::new(0.0, -stats.speed * 0.3)
+                } else {
+                    // Slow side-to-side drift once in position
+                    let x = (ai.timer * 0.5).sin() * stats.speed * 0.3;
+                    Vec2::new(x, 0.0)
+                }
+            }
+            EnemyBehavior::Tank => {
+                // Slow but relentless advance toward player
+                let dir = (player_pos - pos).normalize_or_zero();
+                // Mostly moves down, slight homing
+                Vec2::new(dir.x * stats.speed * 0.3, -stats.speed * 0.4)
             }
         };
 
@@ -318,6 +377,17 @@ fn update_enemy_ship_rotation(
             EnemyBehavior::Sniper => {
                 let x = (ai.timer * 1.5 + ai.phase).sin() * stats.speed;
                 Vec2::new(x, 0.0)
+            }
+            EnemyBehavior::Weaver => {
+                let x = (ai.timer * 4.0 + ai.phase).cos() * stats.speed;
+                Vec2::new(x, -stats.speed * 0.7)
+            }
+            EnemyBehavior::Spawner => {
+                let x = (ai.timer * 0.5).cos() * stats.speed * 0.3;
+                Vec2::new(x, 0.0)
+            }
+            EnemyBehavior::Tank => {
+                Vec2::new(0.0, -stats.speed * 0.4)
             }
         };
 
@@ -491,4 +561,183 @@ pub fn spawn_enemy(
             Transform::from_xyz(position.x, position.y, LAYER_ENEMIES),
         )).id()
     }
+}
+
+/// Spawner update - spawns fighter escorts from Spawner enemies
+fn spawner_update(
+    mut commands: Commands,
+    time: Res<Time>,
+    sprite_cache: Option<Res<crate::assets::ShipSpriteCache>>,
+    model_cache: Option<Res<ShipModelCache>>,
+    mut query: Query<(&Transform, &mut EnemySpawner), With<Enemy>>,
+) {
+    let dt = time.delta_secs();
+
+    for (transform, mut spawner) in query.iter_mut() {
+        spawner.spawn_timer -= dt;
+
+        if spawner.spawn_timer <= 0.0 && spawner.spawned_count < spawner.max_spawned {
+            spawner.spawn_timer = spawner.spawn_rate;
+            spawner.spawned_count += 1;
+
+            let pos = transform.translation.truncate();
+            // Spawn fighters slightly offset from spawner
+            let offset_x = (fastrand::f32() - 0.5) * 60.0;
+            let spawn_pos = Vec2::new(pos.x + offset_x, pos.y - 30.0);
+
+            let sprite = sprite_cache
+                .as_ref()
+                .and_then(|c| c.get(spawner.spawn_type_id));
+            let model = model_cache.as_ref().map(|c| c.as_ref());
+
+            spawn_enemy(
+                &mut commands,
+                spawner.spawn_type_id,
+                spawn_pos,
+                EnemyBehavior::Linear, // Spawned fighters use simple linear behavior
+                sprite,
+                model,
+            );
+        }
+    }
+}
+
+/// Spawn a specialized Kamikaze enemy (glowing, suicide rush)
+pub fn spawn_kamikaze(
+    commands: &mut Commands,
+    position: Vec2,
+    sprite: Option<Handle<Image>>,
+    model_cache: Option<&ShipModelCache>,
+) -> Entity {
+    let type_id = 589; // Executioner - fast, aggressive
+    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Kamikaze, sprite, model_cache);
+
+    // Boost stats for kamikaze
+    commands.entity(entity).insert(EnemyStats {
+        type_id,
+        name: "Kamikaze".into(),
+        health: 15.0,  // Low health
+        max_health: 15.0,
+        speed: 180.0,  // Very fast
+        score_value: 150, // Worth more
+        is_boss: false,
+        liberation_value: 1,
+    });
+
+    entity
+}
+
+/// Spawn a Weaver enemy (fast sine-wave harasser)
+pub fn spawn_weaver(
+    commands: &mut Commands,
+    position: Vec2,
+    sprite: Option<Handle<Image>>,
+    model_cache: Option<&ShipModelCache>,
+) -> Entity {
+    let type_id = 602; // Kestrel - agile
+    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Weaver, sprite, model_cache);
+
+    commands.entity(entity).insert(EnemyStats {
+        type_id,
+        name: "Weaver".into(),
+        health: 25.0,
+        max_health: 25.0,
+        speed: 140.0,  // Fast
+        score_value: 120,
+        is_boss: false,
+        liberation_value: 1,
+    });
+
+    entity
+}
+
+/// Spawn a Sniper enemy (long-range, stationary)
+pub fn spawn_sniper(
+    commands: &mut Commands,
+    position: Vec2,
+    sprite: Option<Handle<Image>>,
+    model_cache: Option<&ShipModelCache>,
+) -> Entity {
+    let type_id = 603; // Merlin - Caldari, railgun platform
+    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Sniper, sprite, model_cache);
+
+    commands.entity(entity).insert(EnemyStats {
+        type_id,
+        name: "Sniper".into(),
+        health: 35.0,
+        max_health: 35.0,
+        speed: 50.0,   // Slow
+        score_value: 130,
+        is_boss: false,
+        liberation_value: 1,
+    });
+
+    // Enhanced weapon for sniper
+    commands.entity(entity).insert(EnemyWeapon {
+        weapon_type: WeaponType::Railgun,
+        fire_rate: 0.4,      // Slow but powerful
+        damage: 25.0,        // High damage
+        bullet_speed: 400.0, // Fast projectiles
+        cooldown: 1.0,
+        pattern: FiringPattern::Single,
+    });
+
+    entity
+}
+
+/// Spawn a Spawner enemy (deploys fighters)
+pub fn spawn_spawner_enemy(
+    commands: &mut Commands,
+    position: Vec2,
+    sprite: Option<Handle<Image>>,
+    model_cache: Option<&ShipModelCache>,
+) -> Entity {
+    let type_id = 593; // Tristan - drone boat
+    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Spawner, sprite, model_cache);
+
+    commands.entity(entity).insert(EnemyStats {
+        type_id,
+        name: "Carrier".into(),
+        health: 80.0,   // Tanky
+        max_health: 80.0,
+        speed: 40.0,    // Very slow
+        score_value: 200,
+        is_boss: false,
+        liberation_value: 3, // More crew
+    });
+
+    // Add spawner component
+    commands.entity(entity).insert(EnemySpawner {
+        spawn_rate: 4.0,
+        spawn_timer: 2.0,
+        spawn_type_id: 589, // Spawns Executioners
+        max_spawned: 3,
+        spawned_count: 0,
+    });
+
+    entity
+}
+
+/// Spawn a Tank enemy (heavy armor, slow)
+pub fn spawn_tank(
+    commands: &mut Commands,
+    position: Vec2,
+    sprite: Option<Handle<Image>>,
+    model_cache: Option<&ShipModelCache>,
+) -> Entity {
+    let type_id = 597; // Punisher - heavily armored
+    let entity = spawn_enemy(commands, type_id, position, EnemyBehavior::Tank, sprite, model_cache);
+
+    commands.entity(entity).insert(EnemyStats {
+        type_id,
+        name: "Juggernaut".into(),
+        health: 150.0,  // Very tanky
+        max_health: 150.0,
+        speed: 35.0,    // Very slow
+        score_value: 250,
+        is_boss: false,
+        liberation_value: 2,
+    });
+
+    entity
 }

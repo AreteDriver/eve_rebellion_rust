@@ -4,7 +4,10 @@
 
 use bevy::prelude::*;
 use crate::core::*;
-use crate::entities::{spawn_enemy, EnemyBehavior};
+use crate::entities::{
+    spawn_enemy, spawn_kamikaze, spawn_weaver, spawn_sniper,
+    spawn_spawner_enemy, spawn_tank, EnemyBehavior
+};
 use crate::assets::ShipModelCache;
 use super::dialogue::{DialogueEvent, DialogueSystem};
 
@@ -248,7 +251,28 @@ fn wave_spawning(
             };
 
             let sprite = sprite_cache.get(type_id);
-            spawn_enemy(&mut commands, type_id, pos, behavior, sprite, Some(&model_cache));
+
+            // Use specialized spawn functions for special enemy types
+            match behavior {
+                EnemyBehavior::Kamikaze => {
+                    spawn_kamikaze(&mut commands, pos, sprite, Some(&model_cache));
+                }
+                EnemyBehavior::Weaver => {
+                    spawn_weaver(&mut commands, pos, sprite, Some(&model_cache));
+                }
+                EnemyBehavior::Sniper => {
+                    spawn_sniper(&mut commands, pos, sprite, Some(&model_cache));
+                }
+                EnemyBehavior::Spawner => {
+                    spawn_spawner_enemy(&mut commands, pos, sprite, Some(&model_cache));
+                }
+                EnemyBehavior::Tank => {
+                    spawn_tank(&mut commands, pos, sprite, Some(&model_cache));
+                }
+                _ => {
+                    spawn_enemy(&mut commands, type_id, pos, behavior, sprite, Some(&model_cache));
+                }
+            }
             manager.enemies_remaining -= 1;
         }
     }
@@ -316,13 +340,15 @@ fn get_wave_definition(stage: u32, wave: u32) -> WaveDefinition {
         _ => vec![PUNISHER],
     };
 
-    // Behaviors get more aggressive with stage
+    // Behaviors get more aggressive and varied with stage
     let behaviors = match stage {
         1..=2 => vec![EnemyBehavior::Linear],
-        3..=4 => vec![EnemyBehavior::Linear, EnemyBehavior::Zigzag],
-        5..=7 => vec![EnemyBehavior::Linear, EnemyBehavior::Zigzag, EnemyBehavior::Homing],
-        8..=10 => vec![EnemyBehavior::Zigzag, EnemyBehavior::Homing, EnemyBehavior::Orbital],
-        _ => vec![EnemyBehavior::Homing, EnemyBehavior::Orbital, EnemyBehavior::Kamikaze],
+        3..=4 => vec![EnemyBehavior::Linear, EnemyBehavior::Zigzag, EnemyBehavior::Weaver],
+        5..=6 => vec![EnemyBehavior::Linear, EnemyBehavior::Zigzag, EnemyBehavior::Homing, EnemyBehavior::Sniper],
+        7..=8 => vec![EnemyBehavior::Zigzag, EnemyBehavior::Homing, EnemyBehavior::Weaver, EnemyBehavior::Sniper],
+        9..=10 => vec![EnemyBehavior::Homing, EnemyBehavior::Orbital, EnemyBehavior::Tank, EnemyBehavior::Spawner],
+        11..=12 => vec![EnemyBehavior::Homing, EnemyBehavior::Kamikaze, EnemyBehavior::Tank, EnemyBehavior::Spawner],
+        _ => vec![EnemyBehavior::Kamikaze, EnemyBehavior::Tank, EnemyBehavior::Spawner, EnemyBehavior::Sniper],
     };
 
     // Spawn patterns cycle with wave
