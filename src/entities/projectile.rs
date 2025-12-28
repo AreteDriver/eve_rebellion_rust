@@ -243,3 +243,64 @@ pub fn spawn_enemy_projectile(
         ..default()
     });
 }
+
+/// Spawn enemy projectile with faction-appropriate weapon visuals
+pub fn spawn_enemy_projectile_typed(
+    commands: &mut Commands,
+    position: Vec2,
+    direction: Vec2,
+    damage: f32,
+    speed: f32,
+    weapon_type: WeaponType,
+) {
+    let velocity = direction.normalize_or_zero() * speed;
+    let angle = direction.y.atan2(direction.x) - std::f32::consts::FRAC_PI_2;
+
+    // Get damage type and color based on weapon type
+    let (damage_type, color, size) = match weapon_type {
+        WeaponType::Laser => (
+            DamageType::EM,
+            Color::srgb(1.0, 0.2, 0.2),         // Amarr red laser
+            Vec2::new(3.0, 16.0),                // Beam shape
+        ),
+        WeaponType::Railgun => (
+            DamageType::Kinetic,
+            Color::srgb(0.4, 0.8, 1.0),         // Caldari cyan
+            Vec2::new(4.0, 10.0),                // Fast bolt
+        ),
+        WeaponType::MissileLauncher => (
+            DamageType::Explosive,
+            Color::srgb(1.0, 0.5, 0.15),        // Orange missile
+            Vec2::new(6.0, 8.0),                 // Larger missile
+        ),
+        WeaponType::Drone => (
+            DamageType::Thermal,
+            Color::srgb(0.5, 1.0, 0.4),         // Gallente green
+            Vec2::new(5.0, 5.0),                 // Round drone shot
+        ),
+        WeaponType::Autocannon | WeaponType::Artillery => (
+            DamageType::Kinetic,
+            Color::srgb(1.0, 0.8, 0.3),         // Minmatar yellow/orange
+            Vec2::new(4.0, 8.0),                 // Bullet shape
+        ),
+    };
+
+    commands.spawn((
+        EnemyProjectile,
+        ProjectilePhysics {
+            velocity,
+            lifetime: 5.0,
+        },
+        ProjectileDamage {
+            damage,
+            damage_type,
+        },
+        Sprite {
+            color,
+            custom_size: Some(size),
+            ..default()
+        },
+        Transform::from_xyz(position.x, position.y, LAYER_ENEMY_BULLETS)
+            .with_rotation(Quat::from_rotation_z(angle)),
+    ));
+}

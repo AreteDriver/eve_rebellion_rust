@@ -5,10 +5,12 @@
 pub mod hud;
 pub mod menu;
 pub mod capacitor;
+pub mod backgrounds;
 
 pub use hud::*;
 pub use menu::*;
 pub use capacitor::*;
+pub use backgrounds::*;
 
 use bevy::prelude::*;
 
@@ -21,6 +23,7 @@ impl Plugin for UiPlugin {
             HudPlugin,
             MenuPlugin,
             CapacitorWheelPlugin,
+            BackgroundPlugin,
         ));
     }
 }

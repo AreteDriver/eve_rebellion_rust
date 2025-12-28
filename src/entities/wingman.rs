@@ -5,6 +5,7 @@
 
 use bevy::prelude::*;
 use crate::core::*;
+use crate::assets::{ShipModelCache, ShipModelRotation, get_model_scale};
 use super::{Player, PlayerProjectile, ProjectilePhysics, ProjectileDamage};
 
 /// Marker for wingman entities
@@ -106,6 +107,7 @@ fn track_kills_for_wingman(
     player_query: Query<&Transform, With<Player>>,
     wingmen_query: Query<&WingmanStats, With<Wingman>>,
     sprite_cache: Res<crate::assets::ShipSpriteCache>,
+    model_cache: Res<ShipModelCache>,
 ) {
     // Only Rifter gets wingmen
     if selected_ship.ship != MinmatarShip::Rifter {
@@ -144,7 +146,7 @@ fn track_kills_for_wingman(
                 }
             }
 
-            spawn_wingman(&mut commands, player_pos, offset_x, Some(&sprite_cache));
+            spawn_wingman(&mut commands, player_pos, offset_x, Some(&sprite_cache), Some(&model_cache));
             info!("Wingman spawned! (offset: {})", offset_x);
         }
     }
@@ -156,19 +158,42 @@ pub fn spawn_wingman(
     player_pos: Vec2,
     offset_x: f32,
     sprite_cache: Option<&crate::assets::ShipSpriteCache>,
+    model_cache: Option<&ShipModelCache>,
 ) -> Entity {
     let spawn_pos = Vec2::new(player_pos.x + offset_x, player_pos.y + 40.0);
+    let rifter_type_id: u32 = 587;
 
-    // Try to get Rifter sprite
+    // Try 3D model first
+    if let Some(cache) = model_cache {
+        if let Some(scene_handle) = cache.get(rifter_type_id) {
+            let model_rot = ShipModelRotation::new_player();
+            let scale = get_model_scale(rifter_type_id) * 40.0; // Slightly smaller than player
+
+            return commands.spawn((
+                Wingman,
+                WingmanStats {
+                    offset_x,
+                    ..default()
+                },
+                WingmanWeapon::default(),
+                model_rot.clone(),
+                SceneRoot(scene_handle),
+                Transform::from_xyz(spawn_pos.x, spawn_pos.y, 0.0)
+                    .with_scale(Vec3::splat(scale))
+                    .with_rotation(model_rot.base_rotation),
+            )).id();
+        }
+    }
+
+    // Fallback to sprite
     let sprite = if let Some(cache) = sprite_cache {
-        if let Some(texture) = cache.get(587) { // Rifter type ID
+        if let Some(texture) = cache.get(rifter_type_id) {
             Sprite {
                 image: texture,
                 custom_size: Some(Vec2::new(35.0, 44.0)),
                 ..default()
             }
         } else {
-            // Fallback: rust-colored triangle
             Sprite {
                 color: COLOR_MINMATAR,
                 custom_size: Some(Vec2::new(30.0, 38.0)),

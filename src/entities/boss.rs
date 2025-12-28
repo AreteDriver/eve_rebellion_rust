@@ -4,6 +4,7 @@
 
 use bevy::prelude::*;
 use crate::core::*;
+use crate::assets::{ShipModelCache, ShipModelRotation, get_model_scale};
 use super::player::Hitbox;
 
 /// Marker component for bosses
@@ -365,13 +366,14 @@ pub fn spawn_boss(
     commands: &mut Commands,
     stage: u32,
     sprite_cache: Option<&crate::assets::ShipSpriteCache>,
+    model_cache: Option<&ShipModelCache>,
 ) -> bool {
     let Some(boss_data) = get_boss_for_stage(stage) else {
         return false;
     };
 
     // Get boss scale based on ship class
-    let scale = match boss_data.ship_class.as_str() {
+    let scale_mult = match boss_data.ship_class.as_str() {
         "Bestower" | "Orbital Platform" => 2.0,
         "Navy Omen" | "Prophecy" | "Prophecy Variant" | "Maller" => 2.5,
         "Harbinger" | "Infrastructure" => 3.0,
@@ -381,10 +383,51 @@ pub fn spawn_boss(
         _ => 2.0,
     };
 
-    let size = 64.0 * scale;
+    let size = 64.0 * scale_mult;
     let stationary = boss_data.stationary;
 
-    // Try to get sprite from cache - bosses face DOWN toward player
+    let movement = if stationary {
+        BossMovement {
+            pattern: MovementPattern::Stationary,
+            ..default()
+        }
+    } else {
+        BossMovement {
+            pattern: MovementPattern::Descend,
+            timer: 0.0,
+            speed: 80.0,
+        }
+    };
+
+    // Spawn at top of screen
+    let start_y = SCREEN_HEIGHT / 2.0 + size;
+
+    // Try 3D model first
+    if boss_data.type_id > 0 {
+        if let Some(cache) = model_cache {
+            if let Some(scene_handle) = cache.get(boss_data.type_id) {
+                let model_rot = ShipModelRotation::new_boss();
+                let model_scale = get_model_scale(boss_data.type_id) * size;
+
+                commands.spawn((
+                    Boss,
+                    boss_data,
+                    BossState::Intro,
+                    movement,
+                    BossAttack::default(),
+                    Hitbox { radius: size / 2.0 * 0.8 },
+                    model_rot.clone(),
+                    SceneRoot(scene_handle),
+                    Transform::from_xyz(0.0, start_y, 0.0)
+                        .with_scale(Vec3::splat(model_scale))
+                        .with_rotation(model_rot.base_rotation),
+                ));
+                return true;
+            }
+        }
+    }
+
+    // Fallback to sprite
     let sprite = if boss_data.type_id > 0 {
         if let Some(cache) = sprite_cache {
             if let Some(texture) = cache.get(boss_data.type_id) {
@@ -416,22 +459,6 @@ pub fn spawn_boss(
             ..default()
         }
     };
-
-    let movement = if stationary {
-        BossMovement {
-            pattern: MovementPattern::Stationary,
-            ..default()
-        }
-    } else {
-        BossMovement {
-            pattern: MovementPattern::Descend,
-            timer: 0.0,
-            speed: 80.0,
-        }
-    };
-
-    // Spawn at top of screen
-    let start_y = SCREEN_HEIGHT / 2.0 + size;
 
     commands.spawn(BossBundle {
         boss: Boss,

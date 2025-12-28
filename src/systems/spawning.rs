@@ -5,6 +5,7 @@
 use bevy::prelude::*;
 use crate::core::*;
 use crate::entities::{spawn_enemy, EnemyBehavior};
+use crate::assets::ShipModelCache;
 use super::dialogue::{DialogueEvent, DialogueSystem};
 
 /// Spawning plugin
@@ -111,6 +112,7 @@ fn wave_spawning(
     mut boss_defeated_events: EventReader<super::boss::BossDefeatedEvent>,
     mut dialogue_events: EventWriter<DialogueEvent>,
     sprite_cache: Res<crate::assets::ShipSpriteCache>,
+    model_cache: Res<ShipModelCache>,
 ) {
     let dt = time.delta_secs();
 
@@ -246,7 +248,7 @@ fn wave_spawning(
             };
 
             let sprite = sprite_cache.get(type_id);
-            spawn_enemy(&mut commands, type_id, pos, behavior, sprite);
+            spawn_enemy(&mut commands, type_id, pos, behavior, sprite, Some(&model_cache));
             manager.enemies_remaining -= 1;
         }
     }
@@ -264,6 +266,7 @@ fn handle_spawn_events(
     mut commands: Commands,
     mut spawn_events: EventReader<SpawnEnemyEvent>,
     sprite_cache: Res<crate::assets::ShipSpriteCache>,
+    model_cache: Res<ShipModelCache>,
 ) {
     for event in spawn_events.read() {
         let type_id: u32 = event.enemy_type.parse().unwrap_or(597);
@@ -277,7 +280,7 @@ fn handle_spawn_events(
         };
 
         let sprite = sprite_cache.get(type_id);
-        spawn_enemy(&mut commands, type_id, event.position, behavior, sprite);
+        spawn_enemy(&mut commands, type_id, event.position, behavior, sprite, Some(&model_cache));
     }
 }
 

@@ -11,11 +11,15 @@ repository = "https://github.com/AreteDriver/EVE_Rebellion"
 # Game Engine
 bevy = { version = "0.15", default-features = false, features = [
     "bevy_asset",
+    "bevy_audio",
     "bevy_color",
     "bevy_core_pipeline",
     "bevy_gizmos",
+    "bevy_gltf",
+    "bevy_pbr",
     "bevy_picking",
     "bevy_render",
+    "bevy_scene",
     "bevy_sprite",
     "bevy_state",
     "bevy_text",
@@ -24,6 +28,7 @@ bevy = { version = "0.15", default-features = false, features = [
     "default_font",
     "multi_threaded",
     "png",
+    "vorbis",
     "x11",
     "wayland",
     "dynamic_linking",
@@ -51,6 +56,9 @@ serde_json = "1"
 rand = "0.8"
 fastrand = "2"
 libc = "0.2"
+
+# Audio generation
+hound = "3.5"
 
 # Image loading (EVE server returns JPEG despite .png extension)
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }

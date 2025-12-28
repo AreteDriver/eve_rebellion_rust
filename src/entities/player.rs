@@ -4,6 +4,7 @@
 
 use bevy::prelude::*;
 use crate::core::*;
+use crate::assets::{ShipModelCache, ShipModelRotation, get_model_scale};
 
 /// Marker component for the player entity
 #[derive(Component, Debug)]
@@ -265,6 +266,7 @@ impl Plugin for PlayerPlugin {
                 Update,
                 (
                     player_movement,
+                    update_player_ship_rotation,
                     player_shooting,
                     update_player_stats,
                 ).run_if(in_state(GameState::Playing)),
@@ -278,6 +280,7 @@ fn spawn_player(
     mut commands: Commands,
     selected_ship: Res<SelectedShip>,
     sprite_cache: Res<crate::assets::ShipSpriteCache>,
+    model_cache: Res<ShipModelCache>,
 ) {
     let ship = selected_ship.ship;
     let type_id = ship.type_id();
@@ -298,18 +301,28 @@ fn spawn_player(
 
     let base_color = COLOR_MINMATAR;
 
-    // Check if we have a cached sprite for this ship
-    let ship_sprite = sprite_cache.get(type_id);
+    // Try 3D model first, then sprite, then color fallback
+    if let Some(scene_handle) = model_cache.get(type_id) {
+        info!("Using 3D model for player ship type {}", type_id);
 
-    if ship_sprite.is_some() {
-        info!("Using EVE sprite for ship type {}", type_id);
-    } else {
-        warn!("No sprite found for ship type {}, using fallback", type_id);
-    }
+        let model_rot = ShipModelRotation::new_player();
+        let scale = get_model_scale(type_id) * 64.0; // Scale to match sprite size
 
-    // Create ship entity with sprite
-    // Player ships face UP (no transformation needed for EVE renders which face up already)
-    if let Some(texture) = ship_sprite {
+        commands.spawn((
+            Player,
+            stats,
+            movement,
+            Weapon::default(),
+            Hitbox::default(),
+            super::collectible::PowerupEffects::default(),
+            model_rot.clone(),
+            SceneRoot(scene_handle),
+            Transform::from_xyz(0.0, -250.0, 0.0)
+                .with_scale(Vec3::splat(scale))
+                .with_rotation(model_rot.base_rotation),
+        ));
+    } else if let Some(texture) = sprite_cache.get(type_id) {
+        info!("Using EVE sprite for player ship type {}", type_id);
         commands.spawn((
             Player,
             stats,
@@ -326,6 +339,7 @@ fn spawn_player(
         ));
     } else {
         // Fallback: simple colored sprite
+        warn!("No model or sprite for type {}, using color fallback", type_id);
         commands.spawn((
             Player,
             stats,
@@ -513,6 +527,27 @@ fn update_player_stats(
     };
 
     stats.update(time.delta_secs());
+}
+
+/// Update 3D ship rotation based on velocity (banking/tilting)
+fn update_player_ship_rotation(
+    time: Res<Time>,
+    mut query: Query<(&Movement, &mut Transform, &ShipModelRotation), With<Player>>,
+) {
+    let dt = time.delta_secs();
+
+    for (movement, mut transform, model_rot) in query.iter_mut() {
+        let target_rotation = model_rot.calculate_rotation(
+            movement.velocity,
+            movement.max_speed,
+        );
+
+        // Smoothly interpolate to target rotation
+        transform.rotation = transform.rotation.slerp(
+            target_rotation,
+            (model_rot.smoothing * dt).min(1.0),
+        );
+    }
 }
 
 /// Despawn player when leaving gameplay

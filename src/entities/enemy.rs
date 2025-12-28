@@ -4,6 +4,7 @@
 
 use bevy::prelude::*;
 use crate::core::*;
+use crate::assets::{ShipModelCache, ShipModelRotation, get_model_scale};
 
 /// Marker component for enemy entities
 #[derive(Component, Debug)]
@@ -62,6 +63,8 @@ impl Default for EnemyStats {
 /// Enemy weapon
 #[derive(Component, Debug, Clone)]
 pub struct EnemyWeapon {
+    /// Weapon type (determines projectile visuals and damage type)
+    pub weapon_type: WeaponType,
     /// Fire rate
     pub fire_rate: f32,
     /// Cooldown timer
@@ -92,6 +95,7 @@ pub enum FiringPattern {
 impl Default for EnemyWeapon {
     fn default() -> Self {
         Self {
+            weapon_type: WeaponType::Laser, // Default Amarr
             fire_rate: 1.0,
             cooldown: 1.0,
             bullet_speed: ENEMY_BULLET_SPEED,
@@ -165,6 +169,7 @@ impl Plugin for EnemyPlugin {
             Update,
             (
                 enemy_movement,
+                update_enemy_ship_rotation,
                 enemy_shooting,
                 enemy_bounds_check,
             ).run_if(in_state(GameState::Playing)),
@@ -253,13 +258,14 @@ fn enemy_shooting(
             let pos = transform.translation.truncate();
             let dir = (player_pos - pos).normalize_or_zero();
 
-            // Spawn enemy projectile aimed at player
-            super::projectile::spawn_enemy_projectile(
+            // Spawn enemy projectile with correct weapon type
+            super::projectile::spawn_enemy_projectile_typed(
                 &mut commands,
                 pos,
                 dir,
-                10.0,  // damage
-                200.0, // speed
+                weapon.damage,
+                weapon.bullet_speed,
+                weapon.weapon_type,
             );
         }
     }
@@ -282,6 +288,44 @@ fn enemy_bounds_check(
     }
 }
 
+/// Update 3D enemy rotation based on movement (banking/tilting)
+fn update_enemy_ship_rotation(
+    time: Res<Time>,
+    mut query: Query<(&EnemyStats, &EnemyAI, &mut Transform, &ShipModelRotation), With<Enemy>>,
+) {
+    let dt = time.delta_secs();
+
+    for (stats, ai, mut transform, model_rot) in query.iter_mut() {
+        // Estimate velocity from AI behavior
+        let velocity = match ai.behavior {
+            EnemyBehavior::Linear => Vec2::new(0.0, -stats.speed),
+            EnemyBehavior::Zigzag => {
+                let x = (ai.timer * 3.0 + ai.phase).sin() * stats.speed;
+                Vec2::new(x, -stats.speed * 0.5)
+            }
+            EnemyBehavior::Homing | EnemyBehavior::Kamikaze => {
+                // These move toward player, estimate based on target
+                let dir = (ai.target - transform.translation.truncate()).normalize_or_zero();
+                dir * stats.speed
+            }
+            EnemyBehavior::Orbital => {
+                let angle = ai.timer * 2.0 + ai.phase;
+                Vec2::new(-angle.sin(), angle.cos()) * stats.speed * 0.5
+            }
+            EnemyBehavior::Sniper => {
+                let x = (ai.timer * 1.5 + ai.phase).sin() * stats.speed;
+                Vec2::new(x, 0.0)
+            }
+        };
+
+        let target_rotation = model_rot.calculate_rotation(velocity, stats.speed);
+        transform.rotation = transform.rotation.slerp(
+            target_rotation,
+            (model_rot.smoothing * dt).min(1.0),
+        );
+    }
+}
+
 /// Get faction color for enemy type
 fn get_enemy_color(type_id: u32) -> Color {
     match type_id {
@@ -295,13 +339,30 @@ fn get_enemy_color(type_id: u32) -> Color {
     }
 }
 
-/// Spawn a single enemy with EVE sprite or fallback color
+/// Get weapon type for faction based on type_id
+fn get_faction_weapon(type_id: u32) -> WeaponType {
+    match type_id {
+        // Amarr - Lasers (EM damage)
+        597 | 589 | 591 => WeaponType::Laser,
+        // Caldari - Railguns/Missiles (Kinetic/Explosive)
+        603 => WeaponType::Railgun,
+        602 => WeaponType::MissileLauncher,
+        // Gallente - Drones/Blasters (Thermal)
+        593 | 594 => WeaponType::Drone,
+        // Minmatar (if any enemy) - Autocannons
+        587 | 585 | 586 => WeaponType::Autocannon,
+        _ => WeaponType::Laser,
+    }
+}
+
+/// Spawn a single enemy with 3D model, EVE sprite, or fallback color
 pub fn spawn_enemy(
     commands: &mut Commands,
     type_id: u32,
     position: Vec2,
     behavior: EnemyBehavior,
     sprite: Option<Handle<Image>>,
+    model_cache: Option<&ShipModelCache>,
 ) -> Entity {
     let (name, health, speed, score) = match type_id {
         // Amarr
@@ -318,27 +379,82 @@ pub fn spawn_enemy(
     };
 
     let base_color = get_enemy_color(type_id);
+    let weapon_type = get_faction_weapon(type_id);
 
-    // Create enemy entity with sprite
-    // Enemies face DOWN (toward player) - flip sprite vertically
+    // Configure weapon based on faction
+    let weapon = EnemyWeapon {
+        weapon_type,
+        fire_rate: match weapon_type {
+            WeaponType::Laser => 0.8,           // Amarr: Slower, harder hitting
+            WeaponType::Railgun => 0.6,         // Caldari: Slow but powerful
+            WeaponType::MissileLauncher => 0.5, // Caldari missiles: Slowest
+            WeaponType::Drone => 1.2,           // Gallente: Fast drones
+            WeaponType::Autocannon => 1.5,      // Minmatar: Fastest
+            _ => 1.0,
+        },
+        damage: match weapon_type {
+            WeaponType::Laser => 12.0,
+            WeaponType::Railgun => 18.0,
+            WeaponType::MissileLauncher => 20.0,
+            WeaponType::Drone => 8.0,
+            WeaponType::Autocannon => 10.0,
+            _ => 10.0,
+        },
+        bullet_speed: match weapon_type {
+            WeaponType::Laser => 280.0,         // Fast beams
+            WeaponType::Railgun => 350.0,       // Fastest projectiles
+            WeaponType::MissileLauncher => 180.0, // Slow missiles
+            WeaponType::Drone => 200.0,         // Medium
+            WeaponType::Autocannon => 250.0,    // Fast bullets
+            _ => 200.0,
+        },
+        cooldown: 0.5 + fastrand::f32() * 1.0, // Random initial delay
+        pattern: FiringPattern::Single,
+    };
+
+    let stats = EnemyStats {
+        type_id,
+        name: name.into(),
+        health,
+        max_health: health,
+        speed,
+        score_value: score,
+        is_boss: false,
+    };
+
+    let ai = EnemyAI {
+        behavior,
+        phase: fastrand::f32() * std::f32::consts::TAU,
+        ..default()
+    };
+
+    // Try 3D model first, then sprite, then color fallback
+    if let Some(cache) = model_cache {
+        if let Some(scene_handle) = cache.get(type_id) {
+            let model_rot = ShipModelRotation::new_enemy();
+            let scale = get_model_scale(type_id) * 48.0; // Scale to match sprite size
+
+            return commands.spawn((
+                Enemy,
+                stats,
+                weapon,
+                ai,
+                model_rot.clone(),
+                SceneRoot(scene_handle),
+                Transform::from_xyz(position.x, position.y, 0.0)
+                    .with_scale(Vec3::splat(scale))
+                    .with_rotation(model_rot.base_rotation),
+            )).id();
+        }
+    }
+
+    // Fallback to sprite
     if let Some(texture) = sprite {
         commands.spawn((
             Enemy,
-            EnemyStats {
-                type_id,
-                name: name.into(),
-                health,
-                max_health: health,
-                speed,
-                score_value: score,
-                is_boss: false,
-            },
-            EnemyWeapon::default(),
-            EnemyAI {
-                behavior,
-                phase: fastrand::f32() * std::f32::consts::TAU,
-                ..default()
-            },
+            stats,
+            weapon,
+            ai,
             Sprite {
                 image: texture,
                 custom_size: Some(Vec2::new(48.0, 48.0)),
@@ -348,24 +464,12 @@ pub fn spawn_enemy(
             Transform::from_xyz(position.x, position.y, LAYER_ENEMIES),
         )).id()
     } else {
-        // Fallback: simple colored sprite
+        // Color fallback
         commands.spawn((
             Enemy,
-            EnemyStats {
-                type_id,
-                name: name.into(),
-                health,
-                max_health: health,
-                speed,
-                score_value: score,
-                is_boss: false,
-            },
-            EnemyWeapon::default(),
-            EnemyAI {
-                behavior,
-                phase: fastrand::f32() * std::f32::consts::TAU,
-                ..default()
-            },
+            stats,
+            weapon,
+            ai,
             Sprite {
                 color: base_color,
                 custom_size: Some(Vec2::new(40.0, 48.0)),

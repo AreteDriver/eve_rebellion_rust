@@ -184,7 +184,7 @@ fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MenuSelection>)
                 row_gap: Val::Px(20.0),
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.02, 0.02, 0.05)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.4)), // Semi-transparent to show background
         ))
         .with_children(|parent| {
             // Title
@@ -297,7 +297,7 @@ fn spawn_difficulty_menu(mut commands: Commands, mut selection: ResMut<MenuSelec
                 row_gap: Val::Px(15.0),
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.02, 0.02, 0.05)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.4)), // Semi-transparent to show background
         ))
         .with_children(|parent| {
             parent.spawn((
@@ -428,7 +428,7 @@ fn spawn_ship_menu(
                 row_gap: Val::Px(15.0),
                 ..default()
             },
-            BackgroundColor(Color::srgb(0.02, 0.02, 0.05)),
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.4)), // Semi-transparent to show background
         ))
         .with_children(|parent| {
             parent.spawn((

@@ -1,6 +1,6 @@
 //! Game Systems
 //!
-//! Core gameplay systems: collision, spawning, scoring, effects, input, dialogue.
+//! Core gameplay systems: collision, spawning, scoring, effects, input, dialogue, audio.
 
 pub mod collision;
 pub mod spawning;
@@ -10,6 +10,7 @@ pub mod effects;
 pub mod joystick;
 pub mod boss;
 pub mod dialogue;
+pub mod audio;
 
 pub use collision::*;
 pub use spawning::*;
@@ -19,6 +20,7 @@ pub use effects::*;
 pub use joystick::*;
 pub use boss::*;
 pub use dialogue::*;
+pub use audio::*;
 
 use bevy::prelude::*;
 
@@ -36,6 +38,7 @@ impl Plugin for SystemsPlugin {
             JoystickPlugin,
             BossPlugin,
             DialoguePlugin,
+            AudioPlugin,
         ));
     }
 }

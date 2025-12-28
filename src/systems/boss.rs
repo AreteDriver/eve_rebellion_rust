@@ -4,6 +4,7 @@
 
 use bevy::prelude::*;
 use crate::core::*;
+use crate::assets::ShipModelCache;
 use crate::entities::{
     Boss, BossData, BossState, BossMovement, BossAttack, MovementPattern,
     spawn_boss, get_phase_threshold,
@@ -72,6 +73,7 @@ fn handle_boss_spawn(
     mut spawn_events: EventReader<BossSpawnEvent>,
     mut encounter: ResMut<BossEncounter>,
     sprite_cache: Res<crate::assets::ShipSpriteCache>,
+    model_cache: Res<ShipModelCache>,
     boss_query: Query<Entity, With<Boss>>,
 ) {
     for event in spawn_events.read() {
@@ -80,7 +82,7 @@ fn handle_boss_spawn(
             continue;
         }
 
-        if spawn_boss(&mut commands, event.stage, Some(&sprite_cache)) {
+        if spawn_boss(&mut commands, event.stage, Some(&sprite_cache), Some(&model_cache)) {
             encounter.active = true;
             encounter.intro_timer = 3.0; // 3 second intro
             encounter.name_shown = false;
