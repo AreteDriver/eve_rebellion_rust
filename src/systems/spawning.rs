@@ -1,6 +1,7 @@
 //! Enemy Spawning System
 //!
-//! Handles wave-based enemy spawning.
+//! Handles wave-based enemy spawning with carrier visuals.
+//! Enemy waves launch from faction-appropriate carriers in the background.
 
 use super::dialogue::{DialogueEvent, DialogueSystem};
 use crate::assets::ShipModelCache;
@@ -17,11 +18,112 @@ pub struct SpawningPlugin;
 impl Plugin for SpawningPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WaveManager>()
-            .add_systems(OnEnter(GameState::Playing), reset_wave_manager)
+            .add_systems(OnEnter(GameState::Playing), (reset_wave_manager, spawn_enemy_carrier))
+            .add_systems(OnExit(GameState::Playing), cleanup_carrier)
             .add_systems(
                 Update,
-                (wave_spawning, handle_spawn_events).run_if(in_state(GameState::Playing)),
+                (wave_spawning, handle_spawn_events, animate_carrier).run_if(in_state(GameState::Playing)),
             );
+    }
+}
+
+/// Marker component for the enemy carrier in background
+#[derive(Component)]
+pub struct EnemyCarrier {
+    /// Base Y position
+    pub base_y: f32,
+    /// Animation timer
+    pub timer: f32,
+    /// Warp-in progress (0.0 = warping, 1.0 = arrived)
+    pub warp_progress: f32,
+}
+
+/// Spawn the enemy faction's carrier in the background
+fn spawn_enemy_carrier(
+    mut commands: Commands,
+    session: Res<GameSession>,
+    sprite_cache: Res<crate::assets::ShipSpriteCache>,
+) {
+    let carrier_id = session.enemy_faction.carrier_type_id();
+    let sprite = sprite_cache.get(carrier_id);
+
+    // Position carrier in upper background
+    let carrier_y = SCREEN_HEIGHT / 2.0 - 100.0;
+
+    let mut entity = commands.spawn((
+        EnemyCarrier {
+            base_y: carrier_y,
+            timer: 0.0,
+            warp_progress: 0.0, // Start warping in
+        },
+        Transform::from_xyz(0.0, carrier_y + 200.0, -50.0) // Start above screen, z=-50 for background
+            .with_scale(Vec3::splat(3.0)), // Large carrier sprite
+        Visibility::Visible,
+        Name::new("EnemyCarrier"),
+    ));
+
+    // Add sprite or 3D model based on what's available
+    if let Some(texture) = sprite {
+        entity.insert((
+            Sprite {
+                image: texture,
+                color: Color::srgba(1.0, 1.0, 1.0, 0.0), // Start invisible for warp-in
+                flip_y: true, // Enemy faces down
+                ..default()
+            },
+        ));
+    }
+
+    info!("Enemy {} carrier warping in!", session.enemy_faction.short_name());
+}
+
+/// Animate the carrier - warp-in effect and gentle bobbing
+fn animate_carrier(
+    time: Res<Time>,
+    mut carrier_query: Query<(&mut EnemyCarrier, &mut Transform, &mut Sprite)>,
+) {
+    let dt = time.delta_secs();
+
+    for (mut carrier, mut transform, mut sprite) in carrier_query.iter_mut() {
+        carrier.timer += dt;
+
+        // Warp-in animation (first 2 seconds)
+        if carrier.warp_progress < 1.0 {
+            carrier.warp_progress = (carrier.warp_progress + dt * 0.5).min(1.0);
+
+            // Slide in from above
+            let target_y = carrier.base_y;
+            let start_y = carrier.base_y + 200.0;
+            transform.translation.y = start_y + (target_y - start_y) * ease_out_cubic(carrier.warp_progress);
+
+            // Fade in with slight blue tint during warp
+            let alpha = carrier.warp_progress * 0.6; // Max 60% opacity
+            let warp_tint = 1.0 - (1.0 - carrier.warp_progress) * 0.3;
+            sprite.color = Color::srgba(warp_tint, warp_tint, 1.0, alpha);
+        } else {
+            // Gentle bobbing motion after warp-in
+            let bob = (carrier.timer * 0.3).sin() * 8.0;
+            transform.translation.y = carrier.base_y + bob;
+
+            // Subtle fade pulse
+            let pulse = 0.55 + (carrier.timer * 0.5).sin() * 0.05;
+            sprite.color = Color::srgba(1.0, 1.0, 1.0, pulse);
+        }
+    }
+}
+
+/// Ease out cubic for smooth deceleration
+fn ease_out_cubic(t: f32) -> f32 {
+    1.0 - (1.0 - t).powi(3)
+}
+
+/// Cleanup carrier when leaving playing state
+fn cleanup_carrier(
+    mut commands: Commands,
+    carrier_query: Query<Entity, With<EnemyCarrier>>,
+) {
+    for entity in carrier_query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }
 
@@ -109,6 +211,7 @@ fn wave_spawning(
     session: Res<crate::core::GameSession>,
     enemy_query: Query<Entity, With<crate::entities::Enemy>>,
     boss_query: Query<Entity, With<crate::entities::Boss>>,
+    carrier_query: Query<&Transform, With<EnemyCarrier>>,
     mut wave_events: EventWriter<SpawnWaveEvent>,
     mut boss_spawn_events: EventWriter<super::boss::BossSpawnEvent>,
     mut boss_defeated_events: EventReader<super::boss::BossDefeatedEvent>,
@@ -116,6 +219,11 @@ fn wave_spawning(
     sprite_cache: Res<crate::assets::ShipSpriteCache>,
     model_cache: Res<ShipModelCache>,
 ) {
+    // Get carrier position for spawning enemies
+    let carrier_pos = carrier_query
+        .get_single()
+        .map(|t| Vec2::new(t.translation.x, t.translation.y))
+        .unwrap_or(Vec2::new(0.0, SCREEN_HEIGHT / 2.0 - 100.0));
     let dt = time.delta_secs();
 
     // Handle boss defeated - progress to next stage
@@ -225,36 +333,41 @@ fn wave_spawning(
             let behavior_idx = fastrand::usize(..wave_def.behaviors.len());
             let behavior = wave_def.behaviors[behavior_idx];
 
-            // Spawn position based on pattern
+            // Spawn position based on pattern - enemies launch from carrier
             let pos = match wave_def.spawn_pattern {
                 SpawnPattern::Single | SpawnPattern::Random => {
-                    let x = fastrand::f32() * (SCREEN_WIDTH - 100.0) - (SCREEN_WIDTH / 2.0 - 50.0);
-                    Vec2::new(x, SCREEN_HEIGHT / 2.0 + 50.0)
+                    // Spawn near carrier with random spread
+                    let x = carrier_pos.x + fastrand::f32() * 200.0 - 100.0;
+                    Vec2::new(x, carrier_pos.y - 50.0)
                 }
                 SpawnPattern::Line => {
-                    let spacing = SCREEN_WIDTH / (wave_def.enemy_count as f32 + 1.0);
+                    // Line formation emanating from carrier
+                    let spacing = 300.0 / (wave_def.enemy_count as f32 + 1.0);
                     let idx = wave_def.enemy_count - manager.enemies_remaining;
-                    let x = spacing * (idx as f32 + 1.0) - SCREEN_WIDTH / 2.0;
-                    Vec2::new(x, SCREEN_HEIGHT / 2.0 + 50.0)
+                    let x = carrier_pos.x + spacing * (idx as f32 + 1.0) - 150.0;
+                    Vec2::new(x, carrier_pos.y - 40.0)
                 }
                 SpawnPattern::VFormation => {
+                    // V formation launching from carrier bay
                     let idx = wave_def.enemy_count - manager.enemies_remaining;
                     let center_idx = wave_def.enemy_count / 2;
                     let offset = (idx as i32 - center_idx as i32) as f32;
-                    let x = offset * 60.0;
-                    let y = SCREEN_HEIGHT / 2.0 + 50.0 - offset.abs() * 30.0;
+                    let x = carrier_pos.x + offset * 50.0;
+                    let y = carrier_pos.y - 30.0 - offset.abs() * 25.0;
                     Vec2::new(x, y)
                 }
                 SpawnPattern::Circle => {
+                    // Circle around carrier
                     let angle = (manager.enemies_remaining as f32) / (wave_def.enemy_count as f32)
                         * std::f32::consts::TAU;
-                    let x = angle.cos() * 200.0;
-                    let y = angle.sin() * 100.0 + 200.0;
+                    let x = carrier_pos.x + angle.cos() * 150.0;
+                    let y = carrier_pos.y + angle.sin() * 80.0 - 20.0;
                     Vec2::new(x, y)
                 }
                 SpawnPattern::Swarm => {
-                    let x = fastrand::f32() * 400.0 - 200.0;
-                    let y = SCREEN_HEIGHT / 2.0 + 30.0 + fastrand::f32() * 50.0;
+                    // Swarm bursting from carrier bay
+                    let x = carrier_pos.x + fastrand::f32() * 300.0 - 150.0;
+                    let y = carrier_pos.y - 20.0 - fastrand::f32() * 60.0;
                     Vec2::new(x, y)
                 }
             };

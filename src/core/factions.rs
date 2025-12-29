@@ -156,6 +156,16 @@ impl Faction {
             Faction::Gallente => GALLENTE_ENEMIES,
         }
     }
+
+    /// Get carrier type_id for this faction (used for wave spawning visuals)
+    pub fn carrier_type_id(&self) -> u32 {
+        match self {
+            Faction::Minmatar => 24483, // Nidhoggur
+            Faction::Amarr => 23757,    // Archon
+            Faction::Caldari => 23915,  // Chimera
+            Faction::Gallente => 23911, // Thanatos
+        }
+    }
 }
 
 /// Weapon doctrine types
@@ -274,7 +284,7 @@ pub const MINMATAR_SHIPS: &[ShipDef] = &[
         unlock_stage: 0,
     },
     ShipDef {
-        type_id: 603,
+        type_id: 585,
         name: "Slasher",
         class: ShipClass::Frigate,
         role: "Fast Interceptor",
@@ -295,18 +305,6 @@ pub const MINMATAR_SHIPS: &[ShipDef] = &[
         fire_rate: 4.0,
         damage: 18.0,
         special: "Rocket Barrage: Triple spread",
-        unlock_stage: 0,
-    },
-    ShipDef {
-        type_id: 586,
-        name: "Probe",
-        class: ShipClass::Frigate,
-        role: "Scout",
-        health: 60.0,
-        speed: 380.0,
-        fire_rate: 12.0,
-        damage: 5.0,
-        special: "Cloak: 3s invisibility",
         unlock_stage: 0,
     },
     ShipDef {
@@ -347,7 +345,7 @@ pub const MINMATAR_ENEMIES: &[EnemyShipDef] = &[
         score: 100,
     },
     EnemyShipDef {
-        type_id: 603,
+        type_id: 585,
         name: "Slasher",
         class: ShipClass::Frigate,
         health: 35.0,
@@ -467,7 +465,7 @@ pub const AMARR_ENEMIES: &[EnemyShipDef] = &[
         score: 100,
     },
     EnemyShipDef {
-        type_id: 20185,
+        type_id: 16236,
         name: "Coercer",
         class: ShipClass::Destroyer,
         health: 120.0,
@@ -518,15 +516,15 @@ pub const CALDARI_SHIPS: &[ShipDef] = &[
         unlock_stage: 0,
     },
     ShipDef {
-        type_id: 605,
+        type_id: 583,
         name: "Condor",
         class: ShipClass::Frigate,
-        role: "Fast Missile",
+        role: "Fast Tackler",
         health: 70.0,
-        speed: 400.0,
+        speed: 420.0,
         fire_rate: 5.0,
         damage: 12.0,
-        special: "Light Missiles: Long range",
+        special: "Warp Disruptor: Slow enemies",
         unlock_stage: 0,
     },
     ShipDef {
@@ -589,17 +587,17 @@ pub const CALDARI_ENEMIES: &[EnemyShipDef] = &[
         score: 125,
     },
     EnemyShipDef {
-        type_id: 605,
+        type_id: 583,
         name: "Condor",
         class: ShipClass::Frigate,
         health: 40.0,
-        speed: 210.0,
+        speed: 220.0,
         damage: 8.0,
         spawn_weight: 25,
         score: 75,
     },
     EnemyShipDef {
-        type_id: 16240,
+        type_id: 16238,
         name: "Cormorant",
         class: ShipClass::Destroyer,
         health: 100.0,
@@ -741,7 +739,7 @@ pub const GALLENTE_ENEMIES: &[EnemyShipDef] = &[
         score: 200,
     },
     EnemyShipDef {
-        type_id: 24690,
+        type_id: 24700,
         name: "Myrmidon",
         class: ShipClass::Battlecruiser,
         health: 380.0,

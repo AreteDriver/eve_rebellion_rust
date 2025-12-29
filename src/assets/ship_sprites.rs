@@ -57,24 +57,45 @@ impl ShipSpriteCache {
     }
 }
 
-/// Ships to preload
+/// Ships to preload - all player and enemy ships used in game
 const SHIPS_TO_LOAD: &[u32] = &[
-    // Minmatar (player faction)
-    587,   // Rifter (T1 Frigate)
-    11371, // Wolf (Assault Frigate)
-    11400, // Jaguar (Assault Frigate)
-    // Caldari (enemy faction)
-    603,   // Merlin (T1 Frigate)
-    11381, // Hawk (Assault Frigate)
-    11387, // Harpy (Assault Frigate)
-    // Gallente (enemy faction)
-    608,   // Atron (T1 Frigate)
-    11200, // Taranis (Interceptor)
-    11202, // Ares (Interceptor)
-    // Amarr (enemy faction)
-    589,   // Executioner (T1 Frigate)
-    11184, // Crusader (Interceptor)
-    11186, // Malediction (Interceptor)
+    // === MINMATAR (player + enemy ships) ===
+    587,   // Rifter
+    585,   // Slasher
+    598,   // Breacher
+    11371, // Wolf
+    11400, // Jaguar
+    // === AMARR (player + enemy ships) ===
+    589,   // Executioner
+    597,   // Punisher
+    591,   // Tormentor
+    11186, // Crusader (interceptor)
+    11184, // Malediction (interceptor)
+    16236, // Coercer (destroyer)
+    24690, // Harbinger (battlecruiser)
+    // === CALDARI (player + enemy ships) ===
+    602,   // Kestrel
+    603,   // Merlin
+    583,   // Condor
+    11381, // Hawk
+    11387, // Harpy
+    35683, // Jackdaw
+    16238, // Cormorant (destroyer)
+    24688, // Drake (battlecruiser)
+    // === GALLENTE (player + enemy ships) ===
+    593,   // Tristan
+    594,   // Incursus
+    592,   // Atron
+    11373, // Enyo
+    11377, // Ishkur
+    35685, // Hecate
+    16242, // Catalyst (destroyer)
+    24700, // Myrmidon (battlecruiser)
+    // === CARRIERS (wave spawners) ===
+    23757, // Archon (Amarr carrier)
+    23911, // Thanatos (Gallente carrier)
+    23915, // Chimera (Caldari carrier)
+    24483, // Nidhoggur (Minmatar carrier)
 ];
 
 /// Setup the sprite cache directory
