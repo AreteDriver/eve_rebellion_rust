@@ -940,8 +940,12 @@ fn spawn_ship_item_new(
                 ..default()
             })
             .with_children(|left| {
-                // Ship name with class
-                let name_text = format!("{} [{}]", ship.name, ship.class.name());
+                // Ship name with class (and lock icon if locked)
+                let name_text = if is_unlocked {
+                    format!("{} [{}]", ship.name, ship.class.name())
+                } else {
+                    format!("[LOCKED] {} [{}]", ship.name, ship.class.name())
+                };
                 left.spawn((
                     Text::new(name_text),
                     TextFont {
@@ -1744,6 +1748,7 @@ fn spawn_stage_complete(
     mut commands: Commands,
     campaign: Res<CampaignState>,
     score: Res<ScoreSystem>,
+    session: Res<GameSession>,
 ) {
     let mission_name = campaign
         .current_mission()
@@ -1757,6 +1762,15 @@ fn spawn_stage_complete(
     } else {
         ""
     };
+
+    // Check if any ships were unlocked by completing this stage
+    let completed_stage = campaign.stage_number();
+    let ships = session.player_ships();
+    let unlocked_ships: Vec<&str> = ships
+        .iter()
+        .filter(|s| s.unlock_stage == completed_stage)
+        .map(|s| s.name)
+        .collect();
 
     commands
         .spawn((
@@ -1848,8 +1862,51 @@ fn spawn_stage_complete(
                 ));
             }
 
+            // Ship unlock notification
+            if !unlocked_ships.is_empty() {
+                parent.spawn(Node {
+                    height: Val::Px(15.0),
+                    ..default()
+                });
+
+                parent
+                    .spawn((
+                        Node {
+                            padding: UiRect::all(Val::Px(12.0)),
+                            border: UiRect::all(Val::Px(2.0)),
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            row_gap: Val::Px(5.0),
+                            ..default()
+                        },
+                        BorderColor(Color::srgb(0.2, 0.8, 0.4)),
+                        BackgroundColor(Color::srgba(0.1, 0.3, 0.15, 0.9)),
+                    ))
+                    .with_children(|unlock_box| {
+                        unlock_box.spawn((
+                            Text::new("NEW SHIP UNLOCKED!"),
+                            TextFont {
+                                font_size: 22.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.3, 1.0, 0.4)),
+                        ));
+
+                        for ship_name in &unlocked_ships {
+                            unlock_box.spawn((
+                                Text::new(*ship_name),
+                                TextFont {
+                                    font_size: 18.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.9, 0.9, 0.3)),
+                            ));
+                        }
+                    });
+            }
+
             parent.spawn(Node {
-                height: Val::Px(30.0),
+                height: Val::Px(20.0),
                 ..default()
             });
 
