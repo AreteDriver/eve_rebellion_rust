@@ -97,9 +97,10 @@ impl Plugin for MenuPlugin {
             .add_systems(OnEnter(GameState::Victory), spawn_victory_screen)
             .add_systems(
                 Update,
-                (victory_input, update_victory_particles).run_if(in_state(GameState::Victory)),
+                (victory_input, update_victory_particles, update_victory_buttons)
+                    .run_if(in_state(GameState::Victory)),
             )
-            .add_systems(OnExit(GameState::Victory), despawn_menu::<VictoryRoot>)
+            .add_systems(OnExit(GameState::Victory), despawn_victory_screen)
             // Init menu selection resource
             .init_resource::<MenuSelection>();
     }
@@ -188,6 +189,32 @@ impl Default for DeathSelection {
     fn default() -> Self {
         Self {
             selected: DeathAction::Retry,
+        }
+    }
+}
+
+/// Victory screen button
+#[derive(Component)]
+struct VictoryButton {
+    action: VictoryAction,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum VictoryAction {
+    PlayAgain,
+    MainMenu,
+}
+
+/// Victory screen selection state
+#[derive(Resource)]
+struct VictorySelection {
+    selected: VictoryAction,
+}
+
+impl Default for VictorySelection {
+    fn default() -> Self {
+        Self {
+            selected: VictoryAction::PlayAgain,
         }
     }
 }
@@ -1249,9 +1276,22 @@ fn pause_menu_input(
 const COLOR_EVE_AMBER: Color = Color::srgb(0.83, 0.66, 0.29);
 const COLOR_EVE_AMBER_BRIGHT: Color = Color::srgb(1.0, 0.8, 0.0);
 
-fn spawn_death_screen(mut commands: Commands, score: Res<ScoreSystem>) {
+fn spawn_death_screen(
+    mut commands: Commands,
+    score: Res<ScoreSystem>,
+    campaign: Res<CampaignState>,
+    session: Res<GameSession>,
+    save_data: Res<SaveData>,
+) {
     // Initialize selection resource
     commands.insert_resource(DeathSelection::default());
+
+    // Get high score for comparison
+    let high_score = save_data.get_high_score(session.player_faction.name(), session.enemy_faction.name());
+    let is_new_high = score.score > high_score && score.score > 0;
+
+    // Get mission info
+    let mission_name = campaign.current_mission_name();
 
     // Spawn debris field (background sprites)
     let debris_colors = [
@@ -1310,7 +1350,7 @@ fn spawn_death_screen(mut commands: Commands, score: Res<ScoreSystem>) {
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(15.0),
+                row_gap: Val::Px(12.0),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.04, 0.04, 0.07, 0.85)),
@@ -1326,15 +1366,37 @@ fn spawn_death_screen(mut commands: Commands, score: Res<ScoreSystem>) {
                 TextColor(COLOR_EVE_AMBER),
             ));
 
+            // Mission failed info
+            parent.spawn((
+                Text::new(format!("Mission Failed: {}", mission_name)),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.6, 0.4, 0.4)),
+            ));
+
             // Spacer
             parent.spawn(Node {
-                height: Val::Px(80.0),
+                height: Val::Px(30.0),
                 ..default()
             });
 
+            // New high score banner (if achieved)
+            if is_new_high {
+                parent.spawn((
+                    Text::new("★ NEW HIGH SCORE ★"),
+                    TextFont {
+                        font_size: 26.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(1.0, 0.9, 0.0)),
+                ));
+            }
+
             // Final score
             parent.spawn((
-                Text::new(format!("FINAL SCORE: {}", score.score)),
+                Text::new(format!("FINAL SCORE: {}", format_score(score.score))),
                 TextFont {
                     font_size: 36.0,
                     ..default()
@@ -1342,33 +1404,61 @@ fn spawn_death_screen(mut commands: Commands, score: Res<ScoreSystem>) {
                 TextColor(COLOR_EVE_AMBER),
             ));
 
-            // Souls liberated
-            if score.souls_liberated > 0 {
+            // Previous high score (if not beaten)
+            if !is_new_high && high_score > 0 {
                 parent.spawn((
-                    Text::new(format!("Souls Liberated: {}", score.souls_liberated)),
-                    TextFont {
-                        font_size: 22.0,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.59, 0.51, 0.35)),
-                ));
-            }
-
-            // Max chain if achieved
-            if score.chain > 1 {
-                parent.spawn((
-                    Text::new(format!("Max Chain: {}x", score.chain)),
+                    Text::new(format!("High Score: {}", format_score(high_score))),
                     TextFont {
                         font_size: 18.0,
                         ..default()
                     },
-                    TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                    TextColor(Color::srgb(0.5, 0.5, 0.5)),
                 ));
             }
 
+            // Stats row
+            parent
+                .spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(30.0),
+                    ..default()
+                })
+                .with_children(|row| {
+                    if score.souls_liberated > 0 {
+                        row.spawn((
+                            Text::new(format!("Souls: {}", score.souls_liberated)),
+                            TextFont {
+                                font_size: 20.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                        ));
+                    }
+
+                    if score.chain > 1 {
+                        row.spawn((
+                            Text::new(format!("Chain: {}x", score.chain)),
+                            TextFont {
+                                font_size: 20.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                        ));
+                    }
+
+                    row.spawn((
+                        Text::new(format!("Stage {}-{}", campaign.stage_number(), campaign.mission_in_stage())),
+                        TextFont {
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                    ));
+                });
+
             // Spacer
             parent.spawn(Node {
-                height: Val::Px(50.0),
+                height: Val::Px(30.0),
                 ..default()
             });
 
@@ -1437,7 +1527,7 @@ fn spawn_death_screen(mut commands: Commands, score: Res<ScoreSystem>) {
 
             // Spacer
             parent.spawn(Node {
-                height: Val::Px(30.0),
+                height: Val::Px(20.0),
                 ..default()
             });
 
@@ -1815,8 +1905,27 @@ struct VictoryParticle {
 fn spawn_victory_screen(
     mut commands: Commands,
     score: Res<ScoreSystem>,
-    _campaign: Res<CampaignState>,
+    session: Res<GameSession>,
+    campaign: Res<CampaignState>,
+    mut save_data: ResMut<SaveData>,
 ) {
+    // Initialize selection
+    commands.insert_resource(VictorySelection::default());
+
+    // Check for new high score
+    let previous_high = save_data.get_high_score(session.player_faction.name(), session.enemy_faction.name());
+    let is_new_high_score = score.score > previous_high;
+
+    // Record the score if it's a new high
+    if is_new_high_score {
+        save_data.record_score(
+            session.player_faction.name(),
+            session.enemy_faction.name(),
+            score.score,
+            campaign.stage_number(),
+        );
+    }
+
     // Spawn celebration particles
     for _ in 0..60 {
         let x = (fastrand::f32() - 0.5) * SCREEN_WIDTH;
@@ -1859,17 +1968,17 @@ fn spawn_victory_screen(
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(15.0),
+                row_gap: Val::Px(12.0),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.0, 0.02, 0.05, 0.9)),
         ))
         .with_children(|parent| {
-            // Victory header with glow effect (simulated with multiple layers)
+            // Victory header
             parent.spawn((
                 Text::new("LIBERATION COMPLETE"),
                 TextFont {
-                    font_size: 72.0,
+                    font_size: 64.0,
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 0.85, 0.2)), // Gold
@@ -1878,34 +1987,25 @@ fn spawn_victory_screen(
             parent.spawn((
                 Text::new("The Amarr Empire Has Fallen"),
                 TextFont {
-                    font_size: 28.0,
+                    font_size: 26.0,
                     ..default()
                 },
                 TextColor(COLOR_MINMATAR),
             ));
 
-            parent.spawn((
-                Text::new("The Minmatar are FREE"),
-                TextFont {
-                    font_size: 22.0,
-                    ..default()
-                },
-                TextColor(Color::srgb(0.6, 0.9, 1.0)),
-            ));
-
             parent.spawn(Node {
-                height: Val::Px(40.0),
+                height: Val::Px(20.0),
                 ..default()
             });
 
-            // Campaign stats in a styled box
+            // Campaign stats box
             parent
                 .spawn((
                     Node {
                         padding: UiRect::all(Val::Px(20.0)),
                         flex_direction: FlexDirection::Column,
                         align_items: AlignItems::Center,
-                        row_gap: Val::Px(10.0),
+                        row_gap: Val::Px(8.0),
                         border: UiRect::all(Val::Px(2.0)),
                         ..default()
                     },
@@ -1913,19 +2013,43 @@ fn spawn_victory_screen(
                     BackgroundColor(Color::srgba(0.1, 0.08, 0.02, 0.8)),
                 ))
                 .with_children(|stats| {
+                    // New high score banner
+                    if is_new_high_score {
+                        stats.spawn((
+                            Text::new("★ NEW HIGH SCORE ★"),
+                            TextFont {
+                                font_size: 28.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.9, 0.0)),
+                        ));
+                    }
+
                     stats.spawn((
-                        Text::new(format!("FINAL SCORE: {:>12}", format_score(score.score))),
+                        Text::new(format!("FINAL SCORE: {}", format_score(score.score))),
                         TextFont {
-                            font_size: 36.0,
+                            font_size: 32.0,
                             ..default()
                         },
                         TextColor(Color::srgb(1.0, 0.9, 0.3)),
                     ));
 
+                    // Show previous high if not beaten
+                    if !is_new_high_score && previous_high > 0 {
+                        stats.spawn((
+                            Text::new(format!("High Score: {}", format_score(previous_high))),
+                            TextFont {
+                                font_size: 18.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.6, 0.6, 0.6)),
+                        ));
+                    }
+
                     stats.spawn((
                         Text::new(format!("Souls Liberated: {}", score.souls_liberated)),
                         TextFont {
-                            font_size: 26.0,
+                            font_size: 24.0,
                             ..default()
                         },
                         TextColor(Color::srgb(0.4, 0.85, 1.0)),
@@ -1934,27 +2058,15 @@ fn spawn_victory_screen(
                     stats.spawn((
                         Text::new(format!("Kill Multiplier: {:.1}x", score.multiplier)),
                         TextFont {
-                            font_size: 22.0,
+                            font_size: 20.0,
                             ..default()
                         },
                         TextColor(Color::srgb(1.0, 0.6, 0.3)),
                     ));
-
-                    stats.spawn((
-                        Text::new(format!(
-                            "Missions Completed: {}/13",
-                            CampaignState::total_missions()
-                        )),
-                        TextFont {
-                            font_size: 20.0,
-                            ..default()
-                        },
-                        TextColor(Color::srgb(0.5, 1.0, 0.5)),
-                    ));
                 });
 
             parent.spawn(Node {
-                height: Val::Px(30.0),
+                height: Val::Px(15.0),
                 ..default()
             });
 
@@ -1962,7 +2074,7 @@ fn spawn_victory_screen(
             parent.spawn((
                 Text::new("\"Our ancestors smile upon us this day.\""),
                 TextFont {
-                    font_size: 20.0,
+                    font_size: 18.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.7, 0.7, 0.8)),
@@ -1971,11 +2083,79 @@ fn spawn_victory_screen(
             parent.spawn((
                 Text::new("— Elder Drupar Maak"),
                 TextFont {
-                    font_size: 16.0,
+                    font_size: 14.0,
                     ..default()
                 },
                 TextColor(Color::srgb(0.5, 0.5, 0.6)),
             ));
+
+            parent.spawn(Node {
+                height: Val::Px(25.0),
+                ..default()
+            });
+
+            // Button row
+            parent
+                .spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(40.0),
+                    ..default()
+                })
+                .with_children(|row| {
+                    // PLAY AGAIN button
+                    row.spawn((
+                        VictoryButton {
+                            action: VictoryAction::PlayAgain,
+                        },
+                        Node {
+                            width: Val::Px(160.0),
+                            height: Val::Px(50.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        BorderColor(Color::srgb(1.0, 0.85, 0.2)),
+                        BackgroundColor(Color::srgba(1.0, 0.85, 0.2, 0.15)),
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn((
+                            Text::new("PLAY AGAIN"),
+                            TextFont {
+                                font_size: 22.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.85, 0.2)),
+                        ));
+                    });
+
+                    // MAIN MENU button
+                    row.spawn((
+                        VictoryButton {
+                            action: VictoryAction::MainMenu,
+                        },
+                        Node {
+                            width: Val::Px(160.0),
+                            height: Val::Px(50.0),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        BorderColor(Color::srgb(1.0, 0.85, 0.2)),
+                        BackgroundColor(Color::NONE),
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn((
+                            Text::new("MAIN MENU"),
+                            TextFont {
+                                font_size: 22.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.85, 0.2)),
+                        ));
+                    });
+                });
 
             parent.spawn(Node {
                 height: Val::Px(20.0),
@@ -1986,24 +2166,10 @@ fn spawn_victory_screen(
             parent.spawn((
                 Text::new("IN RUST WE TRUST"),
                 TextFont {
-                    font_size: 24.0,
+                    font_size: 20.0,
                     ..default()
                 },
                 TextColor(COLOR_MINMATAR),
-            ));
-
-            parent.spawn(Node {
-                height: Val::Px(30.0),
-                ..default()
-            });
-
-            parent.spawn((
-                Text::new("Press SPACE to return to menu"),
-                TextFont {
-                    font_size: 18.0,
-                    ..default()
-                },
-                TextColor(Color::srgb(0.5, 0.5, 0.5)),
             ));
         });
 }
@@ -2057,21 +2223,75 @@ fn update_victory_particles(
 fn victory_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     joystick: Res<JoystickState>,
+    mut selection: ResMut<VictorySelection>,
     mut score: ResMut<ScoreSystem>,
     mut campaign: ResMut<CampaignState>,
     mut transitions: EventWriter<TransitionEvent>,
 ) {
+    // Navigation (left/right for button selection)
+    if keyboard.just_pressed(KeyCode::ArrowLeft)
+        || keyboard.just_pressed(KeyCode::KeyA)
+        || joystick.dpad_x < 0
+    {
+        selection.selected = VictoryAction::PlayAgain;
+    }
+    if keyboard.just_pressed(KeyCode::ArrowRight)
+        || keyboard.just_pressed(KeyCode::KeyD)
+        || joystick.dpad_x > 0
+    {
+        selection.selected = VictoryAction::MainMenu;
+    }
+
+    // Confirm selection
     if keyboard.just_pressed(KeyCode::Space)
         || keyboard.just_pressed(KeyCode::Enter)
         || joystick.confirm()
-        || keyboard.just_pressed(KeyCode::Escape)
-        || joystick.back()
     {
-        // Reset for new game
+        match selection.selected {
+            VictoryAction::PlayAgain => {
+                score.reset_game();
+                *campaign = CampaignState::default();
+                transitions.send(TransitionEvent::to(GameState::ShipSelect));
+            }
+            VictoryAction::MainMenu => {
+                score.reset_game();
+                *campaign = CampaignState::default();
+                transitions.send(TransitionEvent::slow(GameState::MainMenu));
+            }
+        }
+    }
+
+    // Quick exit to menu
+    if keyboard.just_pressed(KeyCode::Escape) || joystick.back() {
         score.reset_game();
         *campaign = CampaignState::default();
         transitions.send(TransitionEvent::slow(GameState::MainMenu));
     }
+}
+
+fn update_victory_buttons(
+    selection: Res<VictorySelection>,
+    mut button_query: Query<(&VictoryButton, &mut BorderColor, &mut BackgroundColor)>,
+) {
+    let gold = Color::srgb(1.0, 0.85, 0.2);
+    let gold_bright = Color::srgb(1.0, 0.95, 0.4);
+
+    for (button, mut border, mut bg) in button_query.iter_mut() {
+        if button.action == selection.selected {
+            border.0 = gold_bright;
+            bg.0 = Color::srgba(1.0, 0.85, 0.2, 0.2);
+        } else {
+            border.0 = gold;
+            bg.0 = Color::NONE;
+        }
+    }
+}
+
+fn despawn_victory_screen(mut commands: Commands, query: Query<Entity, With<VictoryRoot>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+    commands.remove_resource::<VictorySelection>();
 }
 
 // ============================================================================

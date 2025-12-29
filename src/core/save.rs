@@ -190,6 +190,16 @@ impl SaveData {
         0
     }
 
+    /// Get high score for faction pair
+    pub fn get_high_score(&self, faction: &str, enemy: &str) -> u64 {
+        for hs in &self.high_scores {
+            if hs.player_faction == faction && hs.enemy_faction == enemy {
+                return hs.score;
+            }
+        }
+        0
+    }
+
     /// Record high score
     pub fn record_score(&mut self, faction: &str, enemy: &str, score: u64, stage: u32) {
         // Find or create entry

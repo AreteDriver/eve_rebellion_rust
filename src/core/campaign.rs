@@ -448,6 +448,27 @@ impl CampaignState {
             Act::Act3 => ACT1_MISSIONS.len() + ACT2_MISSIONS.len() + self.mission_index + 1,
         }
     }
+
+    /// Get current mission name
+    pub fn current_mission_name(&self) -> &'static str {
+        self.current_mission()
+            .map(|m| m.name)
+            .unwrap_or("Unknown Mission")
+    }
+
+    /// Get current stage number (act number)
+    pub fn stage_number(&self) -> u32 {
+        match self.act {
+            Act::Act1 => 1,
+            Act::Act2 => 2,
+            Act::Act3 => 3,
+        }
+    }
+
+    /// Get current mission number within current stage (1-indexed)
+    pub fn mission_in_stage(&self) -> u32 {
+        (self.mission_index + 1) as u32
+    }
 }
 
 /// Mission events
