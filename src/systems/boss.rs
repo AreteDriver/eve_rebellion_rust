@@ -210,14 +210,16 @@ fn boss_attack(
     time: Res<Time>,
     mut boss_query: Query<(&Transform, &BossState, &BossData, &mut BossAttack), With<Boss>>,
     player_query: Query<&Transform, (With<crate::entities::Player>, Without<Boss>)>,
+    mut explosion_events: EventWriter<ExplosionEvent>,
 ) {
     let dt = time.delta_secs();
+    let elapsed = time.elapsed_secs();
     let player_pos = player_query
         .get_single()
         .map(|t| t.translation.truncate())
         .unwrap_or(Vec2::ZERO);
 
-    for (transform, state, _data, mut attack) in boss_query.iter_mut() {
+    for (transform, state, data, mut attack) in boss_query.iter_mut() {
         if *state != BossState::Battle {
             continue;
         }
@@ -226,51 +228,228 @@ fn boss_attack(
 
         if attack.fire_timer <= 0.0 {
             let boss_pos = transform.translation.truncate();
+            let phase = data.current_phase;
+            let is_enraged = data.health / data.max_health <= 0.2;
 
             // Fire pattern based on current phase
             match attack.pattern.as_str() {
                 "steady_beam" | "focused_beams" => {
-                    // Single aimed shot
+                    // Single aimed shot - basic attack
                     let dir = (player_pos - boss_pos).normalize_or_zero();
-                    spawn_boss_projectile(&mut commands, boss_pos + dir * 40.0, dir, 250.0, 20.0);
-                    attack.fire_timer = 0.8;
+                    spawn_boss_projectile_styled(
+                        &mut commands,
+                        boss_pos + dir * 40.0,
+                        dir,
+                        250.0,
+                        20.0,
+                        BossProjectileStyle::Laser,
+                    );
+                    attack.fire_timer = if is_enraged { 0.4 } else { 0.8 };
                 }
-                "desperate_spray" | "turret_barrage" => {
-                    // Multi-directional spray
-                    for i in 0..5 {
-                        let angle = -0.4 + (i as f32 * 0.2);
-                        let dir = Vec2::new(angle.sin(), -angle.cos());
-                        spawn_boss_projectile(
+
+                "spread" => {
+                    // Wide spread shot - fan of bullets toward player
+                    let base_dir = (player_pos - boss_pos).normalize_or_zero();
+                    let base_angle = base_dir.y.atan2(base_dir.x);
+                    let bullet_count = if is_enraged { 11 } else { 7 };
+
+                    for i in 0..bullet_count {
+                        let angle_offset =
+                            (i as f32 - (bullet_count - 1) as f32 / 2.0) * 0.18;
+                        let angle = base_angle + angle_offset;
+                        let dir = Vec2::new(angle.cos(), angle.sin());
+                        spawn_boss_projectile_styled(
                             &mut commands,
                             boss_pos + dir * 40.0,
                             dir,
                             200.0,
-                            15.0,
+                            12.0,
+                            BossProjectileStyle::Default,
                         );
                     }
-                    attack.fire_timer = 0.5;
+                    attack.fire_timer = if is_enraged { 0.6 } else { 1.0 };
                 }
+
+                "spiral" => {
+                    // Rotating spiral pattern - 8 bullets in circle
+                    let base_angle = elapsed * 2.5;
+                    for i in 0..8 {
+                        let angle = base_angle + (i as f32 * std::f32::consts::TAU / 8.0);
+                        let dir = Vec2::new(angle.cos(), angle.sin());
+                        spawn_boss_projectile_styled(
+                            &mut commands,
+                            boss_pos,
+                            dir,
+                            150.0,
+                            10.0,
+                            BossProjectileStyle::Default,
+                        );
+                    }
+                    attack.fire_timer = if is_enraged { 0.15 } else { 0.25 };
+                }
+
+                "ring" => {
+                    // 360° ring of bullets expanding outward
+                    let count = 16 + (phase * 4) as usize;
+                    for i in 0..count {
+                        let angle = (i as f32 / count as f32) * std::f32::consts::TAU;
+                        let dir = Vec2::new(angle.cos(), angle.sin());
+                        spawn_boss_projectile_styled(
+                            &mut commands,
+                            boss_pos,
+                            dir,
+                            120.0,
+                            8.0,
+                            BossProjectileStyle::Heavy,
+                        );
+                    }
+                    // Screen flash for ring attack
+                    explosion_events.send(ExplosionEvent {
+                        position: boss_pos,
+                        size: ExplosionSize::Tiny,
+                        color: Color::srgb(1.0, 0.8, 0.3),
+                    });
+                    attack.fire_timer = if is_enraged { 1.2 } else { 2.0 };
+                }
+
+                "barrage" => {
+                    // Rapid fire barrage - 5 bullets in tight cluster
+                    let dir = (player_pos - boss_pos).normalize_or_zero();
+                    for i in 0..5 {
+                        let offset = (i as f32 - 2.0) * 15.0;
+                        let spread = (i as f32 - 2.0) * 0.08;
+                        let bullet_dir = Vec2::new(
+                            dir.x + spread,
+                            dir.y,
+                        ).normalize_or_zero();
+                        spawn_boss_projectile_styled(
+                            &mut commands,
+                            boss_pos + Vec2::new(offset, -30.0),
+                            bullet_dir,
+                            280.0,
+                            15.0,
+                            BossProjectileStyle::Laser,
+                        );
+                    }
+                    attack.fire_timer = if is_enraged { 0.3 } else { 0.5 };
+                }
+
+                "laser_sweep" => {
+                    // Sweeping laser beams - oscillates left/right
+                    let sweep_angle = (elapsed * 2.0).sin() * 0.8;
+                    for i in -2..=2 {
+                        let angle = sweep_angle + (i as f32 * 0.15);
+                        let dir = Vec2::new(angle.sin(), -angle.cos());
+                        spawn_boss_projectile_styled(
+                            &mut commands,
+                            boss_pos + Vec2::new(i as f32 * 30.0, -30.0),
+                            dir,
+                            320.0,
+                            18.0,
+                            BossProjectileStyle::Laser,
+                        );
+                    }
+                    attack.fire_timer = if is_enraged { 0.2 } else { 0.35 };
+                }
+
+                "mega_beam" => {
+                    // Wall of heavy projectiles
+                    for i in 0..5 {
+                        let x_offset = (i as f32 - 2.0) * 50.0;
+                        spawn_boss_projectile_styled(
+                            &mut commands,
+                            boss_pos + Vec2::new(x_offset, -40.0),
+                            Vec2::NEG_Y,
+                            100.0,
+                            25.0,
+                            BossProjectileStyle::Heavy,
+                        );
+                    }
+                    attack.fire_timer = if is_enraged { 0.8 } else { 1.5 };
+                }
+
+                "desperate_spray" | "turret_barrage" => {
+                    // Multi-directional spray - chaotic in enrage
+                    let count = if is_enraged { 9 } else { 5 };
+                    for i in 0..count {
+                        let angle = -0.6 + (i as f32 * 1.2 / count as f32);
+                        let dir = Vec2::new(angle.sin(), -angle.cos());
+                        spawn_boss_projectile(&mut commands, boss_pos + dir * 40.0, dir, 200.0, 15.0);
+                    }
+                    attack.fire_timer = if is_enraged { 0.3 } else { 0.5 };
+                }
+
                 "beam_sweep" | "purifying_beams" => {
-                    // Sweep pattern
-                    let sweep_angle = (time.elapsed_secs() * 3.0).sin() * 0.6;
+                    // Sweep pattern with 3 parallel beams
+                    let sweep_angle = (elapsed * 3.0).sin() * 0.6;
                     let dir = Vec2::new(sweep_angle, -1.0).normalize();
                     for offset in [-30.0, 0.0, 30.0] {
-                        spawn_boss_projectile(
+                        spawn_boss_projectile_styled(
                             &mut commands,
                             boss_pos + Vec2::new(offset, -30.0),
                             dir,
                             300.0,
                             15.0,
+                            BossProjectileStyle::Laser,
                         );
                     }
-                    attack.fire_timer = 0.3;
+                    attack.fire_timer = if is_enraged { 0.15 } else { 0.3 };
                 }
+
                 "drone_swarm" | "missile_swarm" => {
-                    // Homing-style missiles (aimed at player)
+                    // Multiple missiles aimed at player
                     let dir = (player_pos - boss_pos).normalize_or_zero();
-                    spawn_boss_projectile(&mut commands, boss_pos, dir, 180.0, 30.0);
-                    attack.fire_timer = 1.2;
+                    let count = if is_enraged { 5 } else { 3 };
+                    for i in 0..count {
+                        let offset = (i as f32 - (count - 1) as f32 / 2.0) * 20.0;
+                        spawn_boss_projectile_styled(
+                            &mut commands,
+                            boss_pos + Vec2::new(offset, -20.0),
+                            dir,
+                            180.0,
+                            20.0,
+                            BossProjectileStyle::Missile,
+                        );
+                    }
+                    attack.fire_timer = if is_enraged { 0.8 } else { 1.2 };
                 }
+
+                "doomsday" => {
+                    // Titan's doomsday - massive ring + targeted beam
+                    // Ring component
+                    for i in 0..24 {
+                        let angle = (i as f32 / 24.0) * std::f32::consts::TAU;
+                        let dir = Vec2::new(angle.cos(), angle.sin());
+                        spawn_boss_projectile_styled(
+                            &mut commands,
+                            boss_pos,
+                            dir,
+                            80.0,
+                            15.0,
+                            BossProjectileStyle::Heavy,
+                        );
+                    }
+                    // Targeted beam component
+                    let dir = (player_pos - boss_pos).normalize_or_zero();
+                    for i in 0..7 {
+                        spawn_boss_projectile_styled(
+                            &mut commands,
+                            boss_pos + dir * (30.0 + i as f32 * 10.0),
+                            dir,
+                            400.0,
+                            30.0,
+                            BossProjectileStyle::Heavy,
+                        );
+                    }
+                    // Big visual effect
+                    explosion_events.send(ExplosionEvent {
+                        position: boss_pos,
+                        size: ExplosionSize::Large,
+                        color: Color::srgb(1.0, 0.5, 0.1),
+                    });
+                    attack.fire_timer = 3.0;
+                }
+
                 _ => {
                     // Default pattern
                     let dir = (player_pos - boss_pos).normalize_or_zero();
@@ -284,29 +463,80 @@ fn boss_attack(
 
 /// Spawn a boss projectile
 fn spawn_boss_projectile(commands: &mut Commands, pos: Vec2, dir: Vec2, speed: f32, damage: f32) {
-    commands.spawn(EnemyProjectileBundle {
-        marker: EnemyProjectile,
-        physics: ProjectilePhysics {
+    spawn_boss_projectile_styled(commands, pos, dir, speed, damage, BossProjectileStyle::Default);
+}
+
+/// Boss projectile visual styles
+#[derive(Clone, Copy)]
+enum BossProjectileStyle {
+    Default,    // Orange boss bullets
+    Laser,      // Red Amarr laser beam
+    Heavy,      // Large slow projectile
+    Missile,    // Caldari missile style
+    Drone,      // Gallente drone shot
+}
+
+/// Spawn a styled boss projectile
+fn spawn_boss_projectile_styled(
+    commands: &mut Commands,
+    pos: Vec2,
+    dir: Vec2,
+    speed: f32,
+    damage: f32,
+    style: BossProjectileStyle,
+) {
+    let (color, size, damage_type) = match style {
+        BossProjectileStyle::Default => (
+            Color::srgb(1.0, 0.4, 0.1),
+            Vec2::new(8.0, 8.0),
+            DamageType::EM,
+        ),
+        BossProjectileStyle::Laser => (
+            Color::srgb(1.0, 0.2, 0.2),
+            Vec2::new(4.0, 16.0),
+            DamageType::EM,
+        ),
+        BossProjectileStyle::Heavy => (
+            Color::srgb(1.0, 0.7, 0.2),
+            Vec2::new(12.0, 12.0),
+            DamageType::Thermal,
+        ),
+        BossProjectileStyle::Missile => (
+            Color::srgb(0.8, 0.5, 0.2),
+            Vec2::new(6.0, 10.0),
+            DamageType::Explosive,
+        ),
+        BossProjectileStyle::Drone => (
+            Color::srgb(0.4, 0.9, 0.4),
+            Vec2::new(6.0, 6.0),
+            DamageType::Thermal,
+        ),
+    };
+
+    let angle = dir.y.atan2(dir.x) - std::f32::consts::FRAC_PI_2;
+
+    commands.spawn((
+        EnemyProjectile,
+        ProjectilePhysics {
             velocity: dir * speed,
             lifetime: 4.0,
         },
-        damage: ProjectileDamage {
-            damage,
-            damage_type: DamageType::EM,
-        },
-        sprite: Sprite {
-            color: Color::srgb(1.0, 0.4, 0.1), // Orange for boss projectiles
-            custom_size: Some(Vec2::new(8.0, 8.0)),
+        ProjectileDamage { damage, damage_type },
+        Sprite {
+            color,
+            custom_size: Some(size),
             ..default()
         },
-        transform: Transform::from_xyz(pos.x, pos.y, LAYER_ENEMY_BULLETS),
-    });
+        Transform::from_xyz(pos.x, pos.y, LAYER_ENEMY_BULLETS)
+            .with_rotation(Quat::from_rotation_z(angle)),
+    ));
 }
 
-/// Check for phase transitions
+/// Check for phase transitions and enrage
 fn boss_phase_check(
     mut boss_query: Query<
         (
+            &Transform,
             &mut BossData,
             &mut BossAttack,
             &mut BossState,
@@ -316,8 +546,9 @@ fn boss_phase_check(
     >,
     mut encounter: ResMut<BossEncounter>,
     mut screen_shake: ResMut<ScreenShake>,
+    mut explosion_events: EventWriter<ExplosionEvent>,
 ) {
-    for (mut data, mut attack, mut state, mut movement) in boss_query.iter_mut() {
+    for (transform, mut data, mut attack, mut state, mut movement) in boss_query.iter_mut() {
         if *state != BossState::Battle {
             continue;
         }
@@ -325,6 +556,50 @@ fn boss_phase_check(
         let health_percent = data.health / data.max_health;
         let current_phase = data.current_phase;
         let next_phase = current_phase + 1;
+        let boss_pos = transform.translation.truncate();
+
+        // Check for enrage trigger
+        if !data.is_enraged && health_percent <= data.enrage_threshold {
+            data.is_enraged = true;
+
+            // Massive screen shake for enrage
+            screen_shake.massive();
+
+            // Big explosion effect
+            explosion_events.send(ExplosionEvent {
+                position: boss_pos,
+                size: ExplosionSize::Large,
+                color: Color::srgb(1.0, 0.2, 0.2),
+            });
+
+            // Speed up attacks significantly
+            attack.fire_rate *= 0.6;
+
+            // More aggressive movement
+            if !data.stationary {
+                movement.pattern = MovementPattern::Aggressive;
+                movement.speed *= 1.5;
+            }
+
+            info!(
+                "BOSS ENRAGED! {} at {:.0}% HP - attacks intensified!",
+                data.name,
+                health_percent * 100.0
+            );
+        }
+
+        // Visual enrage effect - periodic sparks
+        if data.is_enraged && fastrand::f32() < 0.1 {
+            let offset = Vec2::new(
+                (fastrand::f32() - 0.5) * 60.0,
+                (fastrand::f32() - 0.5) * 40.0,
+            );
+            explosion_events.send(ExplosionEvent {
+                position: boss_pos + offset,
+                size: ExplosionSize::Tiny,
+                color: Color::srgb(1.0, 0.3, 0.1),
+            });
+        }
 
         // Check if should transition to next phase
         if next_phase <= data.total_phases {
@@ -339,12 +614,19 @@ fn boss_phase_check(
                 attack.fire_rate *= 0.85; // Speed up attacks
 
                 // Some bosses change movement in later phases
-                if next_phase >= 3 {
+                if next_phase >= 3 && !data.stationary {
                     movement.pattern = MovementPattern::Aggressive;
                 }
 
                 // Screen shake on phase change
                 screen_shake.large();
+
+                // Phase transition explosion
+                explosion_events.send(ExplosionEvent {
+                    position: boss_pos,
+                    size: ExplosionSize::Medium,
+                    color: Color::srgb(1.0, 0.8, 0.3),
+                });
 
                 info!(
                     "Boss phase {}/{}: {} at {:.0}% HP",
@@ -361,17 +643,81 @@ fn boss_phase_check(
 /// Get attack pattern for boss phase
 fn get_phase_pattern(boss_id: u32, phase: u32) -> String {
     match (boss_id, phase) {
+        // Stage 1 - Bestower (Transport)
         (1, 1) => "steady_beam",
-        (1, 2) => "desperate_spray",
+        (1, 2) => "spread",
+
+        // Stage 2 - Navy Omen (Patrol)
         (2, 1) => "focused_beams",
-        (2, 2) => "beam_sweep",
+        (2, 2) => "barrage",
+
+        // Stage 3 - Orbital Platform
         (3, 1) => "turret_barrage",
-        (3, 2) => "missile_swarm",
-        (3, 3) => "overcharge_beam",
+        (3, 2) => "ring",
+        (3, 3) => "spiral",
+
+        // Stage 4 - Maller Fleet
+        (4, 1) => "spread",
+        (4, 2) => "laser_sweep",
+        (4, 3) => "barrage",
+
+        // Stage 5 - Prophecy (Customs)
+        (5, 1) => "beam_sweep",
+        (5, 2) => "spiral",
+        (5, 3) => "ring",
+
+        // Stage 6 - Inquisitor
+        (6, 1) => "laser_sweep",
+        (6, 2) => "barrage",
+        (6, 3) => "spread",
+
+        // Stage 7 - Harbinger Strike Group
+        (7, 1) => "spread",
+        (7, 2) => "mega_beam",
+        (7, 3) => "laser_sweep",
+
+        // Stage 8 - Stargate Defense
+        (8, 1) => "turret_barrage",
+        (8, 2) => "ring",
+        (8, 3) => "spiral",
+        (8, 4) => "mega_beam",
+
+        // Stage 9 - Battlestation
+        (9, 1) => "turret_barrage",
+        (9, 2) => "ring",
+        (9, 3) => "spiral",
+        (9, 4) => "missile_swarm",
+        (9, 5) => "mega_beam",
+
+        // Stage 10 - Armageddon
+        (10, 1) => "laser_sweep",
+        (10, 2) => "mega_beam",
+        (10, 3) => "desperate_spray",
+
+        // Stage 11 - Archon (Carrier)
+        (11, 1) => "drone_swarm",
+        (11, 2) => "spread",
+        (11, 3) => "ring",
+        (11, 4) => "missile_swarm",
+
+        // Stage 12 - Apocalypse Navy
+        (12, 1) => "laser_sweep",
+        (12, 2) => "mega_beam",
+        (12, 3) => "barrage",
+        (12, 4) => "desperate_spray",
+
+        // Stage 13 - Avatar Titan
+        (13, 1) => "spread",
+        (13, 2) => "ring",
+        (13, 3) => "spiral",
+        (13, 4) => "mega_beam",
+        (13, 5) => "doomsday",
+
+        // Default fallbacks
         (_, 1) => "steady_beam",
-        (_, 2) => "beam_sweep",
-        (_, 3) => "drone_swarm",
-        (_, 4) => "desperate_spray",
+        (_, 2) => "spread",
+        (_, 3) => "laser_sweep",
+        (_, 4) => "ring",
         (_, 5) => "doomsday",
         _ => "steady_beam",
     }

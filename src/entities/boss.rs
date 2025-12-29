@@ -44,6 +44,10 @@ pub struct BossData {
     pub dialogue_intro: String,
     /// Defeat dialogue
     pub dialogue_defeat: String,
+    /// Is boss enraged (below 20% health)
+    pub is_enraged: bool,
+    /// Enrage threshold (default 0.2 = 20%)
+    pub enrage_threshold: f32,
 }
 
 /// Boss health bar component
@@ -152,6 +156,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "You dare attack an Imperial transport? Foolish rebel!".to_string(),
             dialogue_defeat: "The slaves... they're escaping...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         2 => Some(BossData {
             id: 2,
@@ -169,6 +175,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "Another rebel scum. I've crushed dozens like you.".to_string(),
             dialogue_defeat: "Impossible... a frigate...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         3 => Some(BossData {
             id: 3,
@@ -186,6 +194,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: true,
             dialogue_intro: "Defense grid online. Eliminate hostile.".to_string(),
             dialogue_defeat: "Core breach... structural failure...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         4 => Some(BossData {
             id: 4,
@@ -203,6 +213,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "You attack a Holder's estate? You will burn for this heresy!".to_string(),
             dialogue_defeat: "My slaves... my property... all lost...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         5 => Some(BossData {
             id: 5,
@@ -220,6 +232,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "No cargo passes without Imperial inspection. Surrender.".to_string(),
             dialogue_defeat: "The customs... will... be avenged...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         6 => Some(BossData {
             id: 6,
@@ -237,6 +251,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "Heretics! The Scriptures demand your purification!".to_string(),
             dialogue_defeat: "God... will not... forget this blasphemy...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         7 => Some(BossData {
             id: 7,
@@ -254,6 +270,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "Strike group, weapons free. Eliminate rebel contact.".to_string(),
             dialogue_defeat: "All ships... lost... how...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         8 => Some(BossData {
             id: 8,
@@ -271,6 +289,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: true,
             dialogue_intro: "Unauthorized vessel. Activating defense protocols.".to_string(),
             dialogue_defeat: "Gate control... offline... rebels... have breached...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         9 => Some(BossData {
             id: 9,
@@ -288,6 +308,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: true,
             dialogue_intro: "Station defense grid activated. All personnel to combat stations.".to_string(),
             dialogue_defeat: "Reactor critical... containment failing... the slaves are free...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         10 => Some(BossData {
             id: 10,
@@ -305,6 +327,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "You face the might of the Imperial Navy. Prepare for oblivion.".to_string(),
             dialogue_defeat: "The Armageddon... falls... this cannot be...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         11 => Some(BossData {
             id: 11,
@@ -322,6 +346,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "Launch all fighters. Annihilate the rebel frigate.".to_string(),
             dialogue_defeat: "Flight deck... compromised... she's going down...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         12 => Some(BossData {
             id: 12,
@@ -339,6 +365,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "I have served the Empire for two hundred years. You will not take this day.".to_string(),
             dialogue_defeat: "My Emperor... I have... failed...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.2,
         }),
         13 => Some(BossData {
             id: 13,
@@ -356,6 +384,8 @@ pub fn get_boss_for_stage(stage: u32) -> Option<BossData> {
             stationary: false,
             dialogue_intro: "A frigate? Against a Titan? Your courage is matched only by your foolishness.".to_string(),
             dialogue_defeat: "The Empress's Wrath... destroyed by... a single pilot... The Empire... will remember this day...".to_string(),
+            is_enraged: false,
+            enrage_threshold: 0.15, // Titan enrages at 15%
         }),
         _ => None,
     }
