@@ -195,25 +195,28 @@ pub fn spawn_wingman(
         }
     }
 
+    // Wingman size - same as enemy frigate (no player bonus)
+    let wingman_size = crate::core::SIZE_FRIGATE;
+
     // Fallback to sprite
     let sprite = if let Some(cache) = sprite_cache {
         if let Some(texture) = cache.get(rifter_type_id) {
             Sprite {
                 image: texture,
-                custom_size: Some(Vec2::new(35.0, 44.0)),
+                custom_size: Some(Vec2::splat(wingman_size)),
                 ..default()
             }
         } else {
             Sprite {
                 color: COLOR_MINMATAR,
-                custom_size: Some(Vec2::new(30.0, 38.0)),
+                custom_size: Some(Vec2::new(wingman_size * 0.85, wingman_size)),
                 ..default()
             }
         }
     } else {
         Sprite {
             color: COLOR_MINMATAR,
-            custom_size: Some(Vec2::new(30.0, 38.0)),
+            custom_size: Some(Vec2::new(wingman_size * 0.85, wingman_size)),
             ..default()
         }
     };
@@ -227,6 +230,7 @@ pub fn spawn_wingman(
             },
             WingmanWeapon::default(),
             sprite,
+            // EVE renders already face UP - no rotation needed
             Transform::from_xyz(spawn_pos.x, spawn_pos.y, LAYER_PLAYER),
         ))
         .id()

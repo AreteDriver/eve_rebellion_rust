@@ -264,6 +264,21 @@ impl ShipClass {
             ShipClass::Battleship => "Battleship",
         }
     }
+
+    /// Get sprite size for this ship class (in pixels)
+    pub fn sprite_size(&self) -> f32 {
+        use super::constants::*;
+        match self {
+            ShipClass::Frigate => SIZE_FRIGATE,
+            ShipClass::AssaultFrigate => SIZE_ASSAULT_FRIGATE,
+            ShipClass::Interceptor => SIZE_INTERCEPTOR,
+            ShipClass::Destroyer => SIZE_DESTROYER,
+            ShipClass::TacticalDestroyer => SIZE_TACTICAL_DESTROYER,
+            ShipClass::Cruiser => SIZE_CRUISER,
+            ShipClass::Battlecruiser => SIZE_BATTLECRUISER,
+            ShipClass::Battleship => SIZE_BATTLESHIP,
+        }
+    }
 }
 
 // ============================================================================
@@ -648,7 +663,7 @@ pub const GALLENTE_SHIPS: &[ShipDef] = &[
         unlock_stage: 0,
     },
     ShipDef {
-        type_id: 592,
+        type_id: 608,
         name: "Atron",
         class: ShipClass::Frigate,
         role: "Blaster Interceptor",
@@ -719,7 +734,7 @@ pub const GALLENTE_ENEMIES: &[EnemyShipDef] = &[
         score: 125,
     },
     EnemyShipDef {
-        type_id: 592,
+        type_id: 608,
         name: "Atron",
         class: ShipClass::Frigate,
         health: 40.0,

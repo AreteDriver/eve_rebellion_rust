@@ -401,12 +401,14 @@ fn update_enemy_ship_rotation(
 /// Get faction color for enemy type
 fn get_enemy_color(type_id: u32) -> Color {
     match type_id {
-        // Amarr - Gold
-        597 | 589 | 591 => COLOR_AMARR,
-        // Caldari - Steel Blue
-        603 | 602 => COLOR_CALDARI,
-        // Gallente - Green
-        593 | 594 => COLOR_GALLENTE,
+        // Amarr - Gold (frigates, destroyers, battlecruisers)
+        597 | 589 | 591 | 16236 | 24690 => COLOR_AMARR,
+        // Caldari - Steel Blue (frigates, destroyers, battlecruisers)
+        603 | 602 | 583 | 16238 | 24688 => COLOR_CALDARI,
+        // Gallente - Green (frigates, destroyers, battlecruisers)
+        593 | 594 | 608 | 16242 | 24700 => COLOR_GALLENTE,
+        // Minmatar - Rust (frigates)
+        587 | 585 | 598 => COLOR_MINMATAR,
         _ => Color::srgb(0.5, 0.5, 0.5),
     }
 }
@@ -414,14 +416,14 @@ fn get_enemy_color(type_id: u32) -> Color {
 /// Get engine trail for faction based on type_id
 fn get_faction_engine_trail(type_id: u32) -> EngineTrail {
     match type_id {
-        // Amarr - golden engines
-        597 | 589 | 591 | 624 | 2006 | 11373 => EngineTrail::amarr(),
-        // Caldari - blue engines
-        603 | 602 | 11381 | 11387 | 35683 => EngineTrail::caldari(),
-        // Gallente - green engines
-        593 | 594 | 11371 | 35685 => EngineTrail::gallente(),
+        // Amarr - golden engines (frigates, destroyers, battlecruisers)
+        597 | 589 | 591 | 16236 | 24690 | 624 | 2006 | 11373 => EngineTrail::amarr(),
+        // Caldari - blue engines (frigates, destroyers, battlecruisers)
+        603 | 602 | 583 | 16238 | 24688 | 11381 | 11387 | 35683 => EngineTrail::caldari(),
+        // Gallente - green engines (frigates, destroyers, battlecruisers)
+        593 | 594 | 608 | 16242 | 24700 | 11371 | 35685 => EngineTrail::gallente(),
         // Minmatar - rust engines
-        587 | 585 | 586 | 598 => EngineTrail::minmatar(),
+        587 | 585 | 598 => EngineTrail::minmatar(),
         _ => EngineTrail::amarr(), // Default to Amarr (enemies)
     }
 }
@@ -429,15 +431,15 @@ fn get_faction_engine_trail(type_id: u32) -> EngineTrail {
 /// Get weapon type for faction based on type_id
 fn get_faction_weapon(type_id: u32) -> WeaponType {
     match type_id {
-        // Amarr - Lasers (EM damage)
-        597 | 589 | 591 => WeaponType::Laser,
+        // Amarr - Lasers (EM damage) - frigates, destroyers, battlecruisers
+        597 | 589 | 591 | 16236 | 24690 => WeaponType::Laser,
         // Caldari - Railguns/Missiles (Kinetic/Explosive)
-        603 => WeaponType::Railgun,
-        602 => WeaponType::MissileLauncher,
+        603 | 16238 => WeaponType::Railgun,           // Merlin, Cormorant
+        602 | 583 | 24688 => WeaponType::MissileLauncher, // Kestrel, Condor, Drake
         // Gallente - Drones/Blasters (Thermal)
-        593 | 594 => WeaponType::Drone,
-        // Minmatar (if any enemy) - Autocannons
-        585..=587 => WeaponType::Autocannon,
+        593 | 594 | 608 | 16242 | 24700 => WeaponType::Drone,
+        // Minmatar - Autocannons
+        585 | 587 | 598 => WeaponType::Autocannon,
         _ => WeaponType::Laser,
     }
 }
@@ -451,19 +453,52 @@ pub fn spawn_enemy(
     sprite: Option<Handle<Image>>,
     _model_cache: Option<&ShipModelCache>,
 ) -> Entity {
-    let (name, health, speed, score) = match type_id {
-        // Amarr
-        597 => ("Punisher", 40.0, 80.0, 100),
-        589 => ("Executioner", 25.0, 120.0, 80),
-        591 => ("Tormentor", 35.0, 90.0, 90),
-        // Caldari
-        603 => ("Merlin", 45.0, 70.0, 100),
-        602 => ("Kestrel", 30.0, 100.0, 90),
-        // Gallente
-        593 => ("Tristan", 35.0, 90.0, 100),
-        594 => ("Incursus", 40.0, 85.0, 95),
-        _ => ("Unknown", 30.0, 100.0, 50),
+    use crate::core::ShipClass;
+
+    // Stats: (name, health, speed, score, ship_class)
+    let (name, health, speed, score, ship_class) = match type_id {
+        // === AMARR ===
+        // Frigates
+        597 => ("Punisher", 40.0, 80.0, 100, ShipClass::Frigate),
+        589 => ("Executioner", 25.0, 120.0, 80, ShipClass::Frigate),
+        591 => ("Tormentor", 35.0, 90.0, 90, ShipClass::Frigate),
+        // Destroyer
+        16236 => ("Coercer", 120.0, 65.0, 250, ShipClass::Destroyer),
+        // Battlecruiser
+        24690 => ("Harbinger", 400.0, 50.0, 500, ShipClass::Battlecruiser),
+
+        // === CALDARI ===
+        // Frigates
+        603 => ("Merlin", 45.0, 70.0, 100, ShipClass::Frigate),
+        602 => ("Kestrel", 30.0, 100.0, 90, ShipClass::Frigate),
+        583 => ("Condor", 25.0, 130.0, 75, ShipClass::Frigate),
+        // Destroyer
+        16238 => ("Cormorant", 100.0, 70.0, 200, ShipClass::Destroyer),
+        // Battlecruiser
+        24688 => ("Drake", 450.0, 45.0, 500, ShipClass::Battlecruiser),
+
+        // === GALLENTE ===
+        // Frigates
+        593 => ("Tristan", 35.0, 90.0, 100, ShipClass::Frigate),
+        594 => ("Incursus", 40.0, 85.0, 95, ShipClass::Frigate),
+        608 => ("Atron", 25.0, 130.0, 75, ShipClass::Frigate),
+        // Destroyer
+        16242 => ("Catalyst", 90.0, 75.0, 200, ShipClass::Destroyer),
+        // Battlecruiser
+        24700 => ("Myrmidon", 380.0, 55.0, 450, ShipClass::Battlecruiser),
+
+        // === MINMATAR ===
+        // Frigates
+        587 => ("Rifter", 35.0, 100.0, 100, ShipClass::Frigate),
+        585 => ("Slasher", 25.0, 130.0, 75, ShipClass::Frigate),
+        598 => ("Breacher", 40.0, 90.0, 100, ShipClass::Frigate),
+
+        // Unknown - default to frigate size
+        _ => ("Unknown", 30.0, 100.0, 50, ShipClass::Frigate),
     };
+
+    // Get sprite size from ship class
+    let sprite_size = ship_class.sprite_size();
 
     let base_color = get_enemy_color(type_id);
     let weapon_type = get_faction_weapon(type_id);
@@ -540,15 +575,16 @@ pub fn spawn_enemy(
                 engine_trail,
                 Sprite {
                     image: texture,
-                    custom_size: Some(Vec2::new(48.0, 48.0)),
-                    flip_y: true, // Flip to face downward
+                    custom_size: Some(Vec2::splat(sprite_size)),
                     ..default()
                 },
-                Transform::from_xyz(position.x, position.y, LAYER_ENEMIES),
+                // EVE renders face UP, rotate 180° to face DOWN
+                Transform::from_xyz(position.x, position.y, LAYER_ENEMIES)
+                    .with_rotation(Quat::from_rotation_z(std::f32::consts::PI)),
             ))
             .id()
     } else {
-        // Color fallback
+        // Color fallback - slightly smaller for non-square proportion
         commands
             .spawn((
                 Enemy,
@@ -558,7 +594,7 @@ pub fn spawn_enemy(
                 engine_trail,
                 Sprite {
                     color: base_color,
-                    custom_size: Some(Vec2::new(40.0, 48.0)),
+                    custom_size: Some(Vec2::new(sprite_size * 0.85, sprite_size)),
                     ..default()
                 },
                 Transform::from_xyz(position.x, position.y, LAYER_ENEMIES),

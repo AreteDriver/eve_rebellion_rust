@@ -15,6 +15,15 @@ pub struct PlayerProjectile;
 #[derive(Component, Debug)]
 pub struct EnemyProjectile;
 
+/// Seeking/homing projectile - tracks nearest enemy
+#[derive(Component, Debug)]
+pub struct SeekingProjectile {
+    /// Turn rate in radians per second
+    pub turn_rate: f32,
+    /// Maximum range to acquire target
+    pub acquire_range: f32,
+}
+
 /// Projectile physics
 #[derive(Component, Debug, Clone)]
 pub struct ProjectilePhysics {
@@ -104,7 +113,7 @@ impl Plugin for ProjectilePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (spawn_player_projectiles, projectile_update)
+            (spawn_player_projectiles, seeking_projectile_update, projectile_update)
                 .chain()
                 .run_if(in_state(GameState::Playing)),
         );
@@ -137,24 +146,113 @@ fn spawn_player_projectiles(
             event.bullet_color
         };
 
-        // Simple single-entity projectile
-        commands.spawn((
-            PlayerProjectile,
-            ProjectilePhysics {
-                velocity,
-                lifetime: 2.0,
-            },
-            ProjectileDamage {
-                damage: event.damage * damage_mult,
-                damage_type,
-            },
-            Sprite {
-                color,
-                custom_size: Some(Vec2::new(4.0, 12.0)),
-                ..default()
-            },
-            Transform::from_xyz(event.position.x, event.position.y, LAYER_PLAYER_BULLETS),
-        ));
+        // Check if this is a seeking missile (Kestrel/Caldari missile launcher)
+        let is_missile = event.weapon_type == WeaponType::MissileLauncher;
+
+        if is_missile {
+            // Seeking missile - larger, slower, homes on enemies, more damage
+            let missile_velocity = event.direction * (PLAYER_BULLET_SPEED * 0.7); // Slower than bullets
+            let missile_damage = event.damage * damage_mult * 1.25; // 25% more damage than rockets
+
+            commands.spawn((
+                PlayerProjectile,
+                SeekingProjectile {
+                    turn_rate: 4.0, // Radians per second
+                    acquire_range: 400.0,
+                },
+                ProjectilePhysics {
+                    velocity: missile_velocity,
+                    lifetime: 3.0, // Longer lifetime for tracking
+                },
+                ProjectileDamage {
+                    damage: missile_damage,
+                    damage_type,
+                },
+                Sprite {
+                    color,
+                    custom_size: Some(Vec2::new(6.0, 14.0)), // Larger missile sprite
+                    ..default()
+                },
+                Transform::from_xyz(event.position.x, event.position.y, LAYER_PLAYER_BULLETS),
+            ));
+        } else {
+            // Standard projectile
+            commands.spawn((
+                PlayerProjectile,
+                ProjectilePhysics {
+                    velocity,
+                    lifetime: 2.0,
+                },
+                ProjectileDamage {
+                    damage: event.damage * damage_mult,
+                    damage_type,
+                },
+                Sprite {
+                    color,
+                    custom_size: Some(Vec2::new(4.0, 12.0)),
+                    ..default()
+                },
+                Transform::from_xyz(event.position.x, event.position.y, LAYER_PLAYER_BULLETS),
+            ));
+        }
+    }
+}
+
+/// Seeking projectile homing behavior - finds nearest enemy and turns toward it
+fn seeking_projectile_update(
+    time: Res<Time>,
+    enemy_query: Query<&Transform, With<super::Enemy>>,
+    mut seeking_query: Query<
+        (&Transform, &mut ProjectilePhysics, &SeekingProjectile),
+        With<PlayerProjectile>,
+    >,
+) {
+    let dt = time.delta_secs();
+
+    for (transform, mut physics, seeking) in seeking_query.iter_mut() {
+        let missile_pos = transform.translation.truncate();
+
+        // Find nearest enemy within range
+        let mut nearest_enemy: Option<Vec2> = None;
+        let mut nearest_dist = seeking.acquire_range;
+
+        for enemy_transform in enemy_query.iter() {
+            let enemy_pos = enemy_transform.translation.truncate();
+            let dist = (enemy_pos - missile_pos).length();
+
+            if dist < nearest_dist {
+                nearest_dist = dist;
+                nearest_enemy = Some(enemy_pos);
+            }
+        }
+
+        // If we found a target, turn toward it
+        if let Some(target_pos) = nearest_enemy {
+            let current_dir = physics.velocity.normalize_or_zero();
+            let target_dir = (target_pos - missile_pos).normalize_or_zero();
+
+            // Calculate angle difference
+            let current_angle = current_dir.y.atan2(current_dir.x);
+            let target_angle = target_dir.y.atan2(target_dir.x);
+            let mut angle_diff = target_angle - current_angle;
+
+            // Normalize to -PI..PI
+            while angle_diff > std::f32::consts::PI {
+                angle_diff -= std::f32::consts::TAU;
+            }
+            while angle_diff < -std::f32::consts::PI {
+                angle_diff += std::f32::consts::TAU;
+            }
+
+            // Limit turn rate
+            let max_turn = seeking.turn_rate * dt;
+            let turn = angle_diff.clamp(-max_turn, max_turn);
+
+            // Apply turn
+            let new_angle = current_angle + turn;
+            let speed = physics.velocity.length();
+            physics.velocity = Vec2::new(new_angle.cos(), new_angle.sin()) * speed;
+        }
     }
 }
 

@@ -85,7 +85,7 @@ const SHIPS_TO_LOAD: &[u32] = &[
     // === GALLENTE (player + enemy ships) ===
     593,   // Tristan
     594,   // Incursus
-    592,   // Atron
+    608,   // Atron
     11373, // Enyo
     11377, // Ishkur
     35685, // Hecate

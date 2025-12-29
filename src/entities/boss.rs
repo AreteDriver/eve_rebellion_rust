@@ -530,7 +530,6 @@ pub fn spawn_boss(
                 Sprite {
                     image: texture,
                     custom_size: Some(Vec2::splat(size)),
-                    flip_y: true, // Face downward
                     ..default()
                 }
             } else {
@@ -566,7 +565,9 @@ pub fn spawn_boss(
             radius: size / 2.0 * 0.8,
         },
         sprite,
-        transform: Transform::from_xyz(0.0, start_y, LAYER_ENEMIES),
+        // EVE renders face UP, rotate 180° to face DOWN
+        transform: Transform::from_xyz(0.0, start_y, LAYER_ENEMIES)
+            .with_rotation(Quat::from_rotation_z(std::f32::consts::PI)),
     });
 
     if let Some(spawner) = drone_spawner {

@@ -30,13 +30,16 @@ impl Plugin for JoystickPlugin {
 }
 
 /// Current joystick state
-/// Controller mapping (Xbox style):
+/// Controller mapping (Xbox style - twin-stick shooter):
 /// - Left stick: movement
-/// - Right stick: aiming
-/// - RT (right trigger, axis 5): continuous fire
+/// - Right stick: aim AND fire (push to shoot in that direction)
+/// - RT (right trigger): special ability (FREE - was fire)
+/// - LT (left trigger): available
 /// - A (button 0): context action / menu confirm
 /// - B (button 1): emergency burn / menu back
 /// - Y (button 3): formation switch
+/// - RB (button 5): barrel roll
+/// - LB (button 4): thrust
 /// - Start (button 7): pause
 #[derive(Resource, Default, Debug)]
 pub struct JoystickState {
@@ -126,9 +129,30 @@ impl JoystickState {
         Vec2::new(x, y)
     }
 
-    /// Check if fire trigger is pressed (RT = right trigger)
-    /// Uses axis value > 0.1 threshold for continuous fire
+    /// Get aim direction from right stick (twin-stick shooter style)
+    /// Returns normalized direction if stick is pushed past deadzone, None otherwise
+    pub fn aim_direction(&self) -> Option<Vec2> {
+        let aim = Vec2::new(self.right_x, -self.right_y); // Invert Y for game coordinates
+        let magnitude = aim.length();
+
+        // Fire threshold - pushing stick past this fires weapon
+        const FIRE_THRESHOLD: f32 = 0.3;
+
+        if magnitude > FIRE_THRESHOLD {
+            Some(aim.normalize())
+        } else {
+            None
+        }
+    }
+
+    /// Check if fire is active (twin-stick: right stick pushed past threshold)
+    /// Uses right stick magnitude for continuous fire
     pub fn fire(&self) -> bool {
+        self.aim_direction().is_some()
+    }
+
+    /// Check if right trigger is pressed (now free for special ability)
+    pub fn right_trigger_pressed(&self) -> bool {
         self.right_trigger > 0.1
     }
 

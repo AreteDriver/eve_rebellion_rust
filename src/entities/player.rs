@@ -324,13 +324,18 @@ fn spawn_player(
     let base_color = faction.primary_color();
     let engine_trail = EngineTrail::from_faction(faction);
 
+    // Get ship size from class with player visibility bonus
+    let base_size = ship_def.class.sprite_size();
+    let player_size = base_size * crate::core::PLAYER_SIZE_BONUS;
+
     // Use sprites (2D camera compatible)
     if let Some(texture) = sprite_cache.get(type_id) {
         info!(
-            "Spawning {} {} with {} engine",
+            "Spawning {} {} with {} engine (size: {:.0}px)",
             faction.short_name(),
             ship_def.name,
-            faction.weapon_type().name()
+            faction.weapon_type().name(),
+            player_size
         );
         commands.spawn((
             Player,
@@ -343,9 +348,10 @@ fn spawn_player(
             engine_trail,
             Sprite {
                 image: texture,
-                custom_size: Some(Vec2::new(64.0, 64.0)),
+                custom_size: Some(Vec2::splat(player_size)),
                 ..default()
             },
+            // EVE renders already face UP - no rotation needed
             Transform::from_xyz(0.0, -250.0, LAYER_PLAYER),
         ));
     } else {
@@ -362,7 +368,7 @@ fn spawn_player(
             engine_trail,
             Sprite {
                 color: base_color,
-                custom_size: Some(Vec2::new(48.0, 64.0)),
+                custom_size: Some(Vec2::new(player_size * 0.85, player_size)),
                 ..default()
             },
             Transform::from_xyz(0.0, -250.0, LAYER_PLAYER),
@@ -487,7 +493,7 @@ fn player_shooting(
         weapon.cooldown -= dt;
     }
 
-    // Update aim direction from keyboard
+    // Update aim direction from keyboard (IJKL or arrows for aiming)
     let mut aim = Vec2::ZERO;
     if keyboard.pressed(KeyCode::ArrowUp) || keyboard.pressed(KeyCode::KeyI) {
         aim.y += 1.0;
@@ -502,18 +508,21 @@ fn player_shooting(
         aim.x += 1.0;
     }
 
-    // Use right stick for aiming if available
-    let joy_aim = Vec2::new(joystick.right_x, -joystick.right_y);
-    if joy_aim.length_squared() > 0.3 {
+    // Twin-stick controls: right stick aims AND fires
+    // If right stick is pushed, use its direction for aiming
+    let joystick_firing = if let Some(joy_aim) = joystick.aim_direction() {
         aim = joy_aim;
-    }
+        true
+    } else {
+        false
+    };
 
     if aim != Vec2::ZERO {
         weapon.aim_direction = aim.normalize();
     }
 
-    // Fire if holding space/trigger (no capacitor requirement - matches Python)
-    let fire_pressed = keyboard.pressed(KeyCode::Space) || joystick.fire();
+    // Fire if: Space pressed, OR right stick is pushed (twin-stick style)
+    let fire_pressed = keyboard.pressed(KeyCode::Space) || joystick_firing;
 
     if fire_pressed && weapon.cooldown <= 0.0 {
         // Track heat (doesn't block firing, just affects fire rate)

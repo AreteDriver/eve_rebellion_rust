@@ -134,6 +134,40 @@ pub const CAP_BATTLECRUISER: f32 = 2000.0;
 pub const CAP_BATTLESHIP: f32 = 5000.0;
 
 // =============================================================================
+// SHIP SIZES (relative to each other, in pixels)
+// =============================================================================
+
+/// Frigate sprite size (base unit)
+pub const SIZE_FRIGATE: f32 = 36.0;
+
+/// Assault Frigate sprite size (slightly larger than frigate)
+pub const SIZE_ASSAULT_FRIGATE: f32 = 40.0;
+
+/// Interceptor sprite size (smaller, faster ships)
+pub const SIZE_INTERCEPTOR: f32 = 32.0;
+
+/// Destroyer sprite size (~1.5x frigate)
+pub const SIZE_DESTROYER: f32 = 52.0;
+
+/// Tactical Destroyer sprite size
+pub const SIZE_TACTICAL_DESTROYER: f32 = 48.0;
+
+/// Cruiser sprite size (~2x frigate)
+pub const SIZE_CRUISER: f32 = 72.0;
+
+/// Battlecruiser sprite size (~2.5x frigate)
+pub const SIZE_BATTLECRUISER: f32 = 88.0;
+
+/// Battleship sprite size (~3x frigate)
+pub const SIZE_BATTLESHIP: f32 = 110.0;
+
+/// Carrier sprite size (~4x frigate, background element)
+pub const SIZE_CARRIER: f32 = 160.0;
+
+/// Player ship size bonus (player ships slightly larger for visibility)
+pub const PLAYER_SIZE_BONUS: f32 = 1.15;
+
+// =============================================================================
 // EVE IMAGE SERVER
 // =============================================================================
 

@@ -54,26 +54,33 @@ fn spawn_enemy_carrier(
     // Position carrier in upper background
     let carrier_y = SCREEN_HEIGHT / 2.0 - 100.0;
 
+    // Carrier size from constants
+    let carrier_size = crate::core::SIZE_CARRIER;
+
     let mut entity = commands.spawn((
         EnemyCarrier {
             base_y: carrier_y,
             timer: 0.0,
             warp_progress: 0.0, // Start warping in
         },
-        Transform::from_xyz(0.0, carrier_y + 200.0, -50.0) // Start above screen, z=-50 for background
-            .with_scale(Vec3::splat(3.0)), // Large carrier sprite
+        Transform::from_xyz(0.0, carrier_y + 200.0, -50.0), // Start above screen, z=-50 for background
         Visibility::Visible,
         Name::new("EnemyCarrier"),
     ));
 
-    // Add sprite or 3D model based on what's available
+    // Add sprite - carrier faces down (rotated 180°)
     if let Some(texture) = sprite {
         entity.insert((Sprite {
             image: texture,
             color: Color::srgba(1.0, 1.0, 1.0, 0.0), // Start invisible for warp-in
-            flip_y: true,                            // Enemy faces down
+            custom_size: Some(Vec2::splat(carrier_size)),
             ..default()
         },));
+        // EVE renders face UP, rotate 180° to face DOWN
+        entity.insert(
+            Transform::from_xyz(0.0, carrier_y + 200.0, -50.0)
+                .with_rotation(Quat::from_rotation_z(std::f32::consts::PI)),
+        );
     }
 
     info!(
