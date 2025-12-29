@@ -138,31 +138,31 @@ pub const CAP_BATTLESHIP: f32 = 5000.0;
 // =============================================================================
 
 /// Frigate sprite size (base unit)
-pub const SIZE_FRIGATE: f32 = 36.0;
+pub const SIZE_FRIGATE: f32 = 47.0;
 
 /// Assault Frigate sprite size (slightly larger than frigate)
-pub const SIZE_ASSAULT_FRIGATE: f32 = 40.0;
+pub const SIZE_ASSAULT_FRIGATE: f32 = 52.0;
 
 /// Interceptor sprite size (smaller, faster ships)
-pub const SIZE_INTERCEPTOR: f32 = 32.0;
+pub const SIZE_INTERCEPTOR: f32 = 42.0;
 
 /// Destroyer sprite size (~1.5x frigate)
-pub const SIZE_DESTROYER: f32 = 52.0;
+pub const SIZE_DESTROYER: f32 = 68.0;
 
 /// Tactical Destroyer sprite size
-pub const SIZE_TACTICAL_DESTROYER: f32 = 48.0;
+pub const SIZE_TACTICAL_DESTROYER: f32 = 62.0;
 
 /// Cruiser sprite size (~2x frigate)
-pub const SIZE_CRUISER: f32 = 72.0;
+pub const SIZE_CRUISER: f32 = 94.0;
 
 /// Battlecruiser sprite size (~2.5x frigate)
-pub const SIZE_BATTLECRUISER: f32 = 88.0;
+pub const SIZE_BATTLECRUISER: f32 = 114.0;
 
 /// Battleship sprite size (~3x frigate)
-pub const SIZE_BATTLESHIP: f32 = 110.0;
+pub const SIZE_BATTLESHIP: f32 = 143.0;
 
 /// Carrier sprite size (~4x frigate, background element)
-pub const SIZE_CARRIER: f32 = 160.0;
+pub const SIZE_CARRIER: f32 = 208.0;
 
 /// Player ship size bonus (player ships slightly larger for visibility)
 pub const PLAYER_SIZE_BONUS: f32 = 1.15;
