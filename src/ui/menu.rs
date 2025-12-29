@@ -283,9 +283,21 @@ fn loading_progress(
 // Main Menu
 // ============================================================================
 
-fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MenuSelection>) {
+fn spawn_main_menu(
+    mut commands: Commands,
+    mut selection: ResMut<MenuSelection>,
+    save_data: Res<SaveData>,
+) {
     selection.index = 0;
     selection.total = 3;
+
+    // Get best high score across all faction pairs
+    let best_score = save_data
+        .high_scores
+        .iter()
+        .map(|hs| hs.score)
+        .max()
+        .unwrap_or(0);
 
     commands
         .spawn((
@@ -296,7 +308,7 @@ fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MenuSelection>)
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(20.0),
+                row_gap: Val::Px(15.0),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.4)),
@@ -323,7 +335,7 @@ fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MenuSelection>)
 
             // Spacer
             parent.spawn(Node {
-                height: Val::Px(60.0),
+                height: Val::Px(40.0),
                 ..default()
             });
 
@@ -332,9 +344,48 @@ fn spawn_main_menu(mut commands: Commands, mut selection: ResMut<MenuSelection>)
             spawn_menu_item(parent, "OPTIONS", 1);
             spawn_menu_item(parent, "QUIT", 2);
 
+            // High score display
+            if best_score > 0 {
+                parent.spawn(Node {
+                    height: Val::Px(20.0),
+                    ..default()
+                });
+
+                parent
+                    .spawn((
+                        Node {
+                            padding: UiRect::new(Val::Px(20.0), Val::Px(20.0), Val::Px(8.0), Val::Px(8.0)),
+                            border: UiRect::all(Val::Px(1.0)),
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        BorderColor(Color::srgb(0.3, 0.25, 0.15)),
+                        BackgroundColor(Color::srgba(0.1, 0.08, 0.05, 0.8)),
+                    ))
+                    .with_children(|score_box| {
+                        score_box.spawn((
+                            Text::new("HIGH SCORE"),
+                            TextFont {
+                                font_size: 12.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.5, 0.4, 0.3)),
+                        ));
+                        score_box.spawn((
+                            Text::new(format_score(best_score)),
+                            TextFont {
+                                font_size: 24.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(1.0, 0.85, 0.3)),
+                        ));
+                    });
+            }
+
             // Footer
             parent.spawn(Node {
-                height: Val::Px(60.0),
+                height: Val::Px(30.0),
                 ..default()
             });
 
@@ -494,37 +545,88 @@ fn spawn_faction_select(
 fn spawn_faction_card(parent: &mut ChildBuilder, faction: Faction, index: usize) {
     let primary = faction.primary_color();
     let secondary = faction.secondary_color();
+    let rival = faction.rival();
+    let ship_count = faction.player_ships().len();
+
+    // Get first line of lore for preview
+    let lore_preview = faction.story_intro().lines().next().unwrap_or("");
+    let lore_short = if lore_preview.len() > 60 {
+        format!("{}...", &lore_preview[..57])
+    } else {
+        lore_preview.to_string()
+    };
 
     parent
         .spawn((
             FactionSelectRoot,
             MenuItem { index },
             Node {
-                width: Val::Px(280.0),
+                width: Val::Px(320.0),
                 padding: UiRect::all(Val::Px(15.0)),
                 flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Center,
-                row_gap: Val::Px(8.0),
-                border: UiRect::all(Val::Px(2.0)),
+                align_items: AlignItems::FlexStart,
+                row_gap: Val::Px(6.0),
+                border: UiRect::all(Val::Px(3.0)),
                 ..default()
             },
-            BackgroundColor(secondary.with_alpha(0.8)),
-            BorderColor(primary.with_alpha(0.5)),
+            BackgroundColor(Color::srgba(0.05, 0.05, 0.08, 0.95)),
+            BorderColor(primary.with_alpha(0.4)),
         ))
         .with_children(|card| {
-            // Faction name
-            card.spawn((
-                Text::new(faction.short_name()),
-                TextFont {
-                    font_size: 28.0,
-                    ..default()
-                },
-                TextColor(primary),
-            ));
+            // Header row: Faction name + emblem placeholder
+            card.spawn(Node {
+                width: Val::Percent(100.0),
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                ..default()
+            })
+            .with_children(|header| {
+                header.spawn((
+                    Text::new(faction.short_name()),
+                    TextFont {
+                        font_size: 32.0,
+                        ..default()
+                    },
+                    TextColor(primary),
+                ));
+
+                // Faction emblem placeholder (colored square)
+                header.spawn((
+                    Node {
+                        width: Val::Px(40.0),
+                        height: Val::Px(40.0),
+                        border: UiRect::all(Val::Px(2.0)),
+                        ..default()
+                    },
+                    BackgroundColor(secondary.with_alpha(0.6)),
+                    BorderColor(primary.with_alpha(0.8)),
+                ));
+            });
 
             // Full name
             card.spawn((
                 Text::new(faction.name()),
+                TextFont {
+                    font_size: 13.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.6, 0.6, 0.6)),
+            ));
+
+            // Divider
+            card.spawn((
+                Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Px(1.0),
+                    margin: UiRect::vertical(Val::Px(4.0)),
+                    ..default()
+                },
+                BackgroundColor(primary.with_alpha(0.3)),
+            ));
+
+            // Tagline
+            card.spawn((
+                Text::new(format!("\"{}\"", faction.tagline())),
                 TextFont {
                     font_size: 14.0,
                     ..default()
@@ -532,43 +634,113 @@ fn spawn_faction_card(parent: &mut ChildBuilder, faction: Faction, index: usize)
                 TextColor(Color::srgb(0.7, 0.7, 0.7)),
             ));
 
-            // Tagline
+            // Lore preview
             card.spawn((
-                Text::new(format!("\"{}\"", faction.tagline())),
-                TextFont {
-                    font_size: 12.0,
-                    ..default()
-                },
-                TextColor(Color::srgb(0.5, 0.5, 0.5)),
-            ));
-
-            // Doctrine
-            card.spawn((
-                Text::new(format!(
-                    "{} • {}",
-                    faction.weapon_type().name(),
-                    match faction.tank_type() {
-                        TankDoctrine::Shield => "Shield Tank",
-                        TankDoctrine::Armor => "Armor Tank",
-                        TankDoctrine::Speed => "Speed Tank",
-                    }
-                )),
+                Text::new(lore_short),
                 TextFont {
                     font_size: 11.0,
                     ..default()
                 },
-                TextColor(primary.with_alpha(0.8)),
+                TextColor(Color::srgb(0.45, 0.45, 0.5)),
             ));
 
-            // Enemy faction
+            // Spacer
+            card.spawn(Node {
+                height: Val::Px(6.0),
+                ..default()
+            });
+
+            // Combat stats row
+            card.spawn(Node {
+                width: Val::Percent(100.0),
+                flex_direction: FlexDirection::Row,
+                justify_content: JustifyContent::SpaceBetween,
+                ..default()
+            })
+            .with_children(|stats| {
+                // Weapon doctrine
+                stats.spawn((
+                    Text::new(faction.weapon_type().name()),
+                    TextFont {
+                        font_size: 12.0,
+                        ..default()
+                    },
+                    TextColor(faction.weapon_type().bullet_color()),
+                ));
+
+                // Tank doctrine
+                let tank_text = match faction.tank_type() {
+                    TankDoctrine::Shield => "Shield",
+                    TankDoctrine::Armor => "Armor",
+                    TankDoctrine::Speed => "Speed",
+                };
+                stats.spawn((
+                    Text::new(tank_text),
+                    TextFont {
+                        font_size: 12.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.5, 0.7, 0.9)),
+                ));
+
+                // Ship count
+                stats.spawn((
+                    Text::new(format!("{} Ships", ship_count)),
+                    TextFont {
+                        font_size: 12.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                ));
+            });
+
+            // Divider
             card.spawn((
-                Text::new(format!("vs {}", faction.rival().short_name())),
-                TextFont {
-                    font_size: 12.0,
+                Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Px(1.0),
+                    margin: UiRect::vertical(Val::Px(4.0)),
                     ..default()
                 },
-                TextColor(faction.rival().primary_color().with_alpha(0.7)),
+                BackgroundColor(rival.primary_color().with_alpha(0.3)),
             ));
+
+            // Enemy faction row
+            card.spawn(Node {
+                width: Val::Percent(100.0),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                column_gap: Val::Px(8.0),
+                ..default()
+            })
+            .with_children(|enemy_row| {
+                enemy_row.spawn((
+                    Text::new("ENEMY:"),
+                    TextFont {
+                        font_size: 10.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.4, 0.4, 0.4)),
+                ));
+
+                enemy_row.spawn((
+                    Text::new(rival.short_name()),
+                    TextFont {
+                        font_size: 14.0,
+                        ..default()
+                    },
+                    TextColor(rival.primary_color()),
+                ));
+
+                enemy_row.spawn((
+                    Text::new(format!("({})", rival.weapon_type().name())),
+                    TextFont {
+                        font_size: 11.0,
+                        ..default()
+                    },
+                    TextColor(rival.primary_color().with_alpha(0.6)),
+                ));
+            });
         });
 }
 
