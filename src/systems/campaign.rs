@@ -64,7 +64,7 @@ fn update_mission_timer(time: Res<Time>, mut campaign: ResMut<CampaignState>) {
 fn check_wave_complete(
     mut campaign: ResMut<CampaignState>,
     enemy_query: Query<Entity, With<Enemy>>,
-    boss_query: Query<Entity, With<Boss>>,
+    _boss_query: Query<Entity, With<Boss>>,
     mut wave_events: EventWriter<WaveCompleteEvent>,
 ) {
     // Don't check if we're in boss wave
@@ -380,7 +380,7 @@ fn check_boss_defeated(
 fn check_mission_complete(
     campaign: Res<CampaignState>,
     boss_query: Query<Entity, With<Boss>>,
-    mut next_state: ResMut<NextState<GameState>>,
+    _next_state: ResMut<NextState<GameState>>,
 ) {
     // Mission complete when boss is defeated and no boss entities remain
     if campaign.boss_defeated && boss_query.iter().count() == 0 {

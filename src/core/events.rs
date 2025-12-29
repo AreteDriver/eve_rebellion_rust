@@ -2,6 +2,8 @@
 //!
 //! Events for decoupled communication between systems.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 /// Player took damage

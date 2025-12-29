@@ -3,6 +3,8 @@
 //! Downloads and caches ship renders from CCP's Image Server.
 //! https://images.evetech.net/types/{type_id}/render?size={size}
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 use bevy::render::render_asset::RenderAssetUsages;
 use std::collections::HashMap;

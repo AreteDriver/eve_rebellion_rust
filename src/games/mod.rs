@@ -3,6 +3,8 @@
 //! Supports multiple game modules (campaigns) that share the core engine.
 //! Each module defines its own factions, ships, missions, and theme.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 pub mod caldari_gallente;

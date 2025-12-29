@@ -3,9 +3,11 @@
 //! In-game UI: health bars, score, combo, heat, berserk meter, powerup indicators.
 //! EVE-style status panel with capacitor and health rings.
 
+#![allow(dead_code)]
+
 use crate::core::*;
 use crate::entities::{
-    Boss, BossData, BossState, Player, PowerupEffects, ShipStats, Wingman, WingmanTracker,
+    Boss, BossData, BossState, Player, PowerupEffects, Wingman, WingmanTracker,
 };
 use crate::systems::{ComboHeatSystem, DialogueSystem};
 use bevy::prelude::*;

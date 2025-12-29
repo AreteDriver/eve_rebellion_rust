@@ -3,6 +3,8 @@
 //! Allied Rifter frigates that assist the player during combat.
 //! Rifter special ability: spawn wingman every 15 kills.
 
+#![allow(dead_code)]
+
 use super::{Player, PlayerProjectile, ProjectileDamage, ProjectilePhysics};
 use crate::assets::{get_model_scale, ShipModelCache, ShipModelRotation};
 use crate::core::*;

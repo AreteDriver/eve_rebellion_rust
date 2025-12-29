@@ -2,6 +2,8 @@
 //!
 //! Stage bosses for the Elder Fleet campaign.
 
+#![allow(dead_code)]
+
 use super::player::Hitbox;
 use crate::assets::{get_model_scale, ShipModelCache, ShipModelRotation};
 use crate::core::*;

@@ -2,6 +2,8 @@
 //!
 //! The player-controlled ship with EVE-style shield/armor/hull.
 
+#![allow(dead_code)]
+
 use crate::core::*;
 use crate::systems::{EngineTrail, ManeuverState};
 use bevy::prelude::*;

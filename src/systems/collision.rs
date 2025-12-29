@@ -1,33 +1,118 @@
 //! Collision Detection System
 //!
-//! Handles all collision between entities.
+//! Handles all collision between entities using spatial partitioning.
+//! Uses a grid-based approach to reduce O(n²) to O(n).
 
 use crate::core::*;
 use crate::entities::collectible::{spawn_smart_powerup, PlayerHealthState};
 use crate::entities::*;
 use bevy::prelude::*;
 
+// Spatial grid configuration
+const CELL_SIZE: f32 = 50.0;
+const GRID_WIDTH: usize = 18; // 800 / 50 + padding
+const GRID_HEIGHT: usize = 16; // 700 / 50 + padding
+
+/// Spatial grid for fast collision lookups
+#[derive(Resource, Default)]
+pub struct SpatialGrid {
+    /// Grid cells containing enemy entity indices
+    enemy_cells: Vec<Vec<(Entity, Vec2)>>,
+}
+
+impl SpatialGrid {
+    fn new() -> Self {
+        Self {
+            enemy_cells: (0..GRID_WIDTH * GRID_HEIGHT)
+                .map(|_| Vec::with_capacity(8))
+                .collect(),
+        }
+    }
+
+    fn clear(&mut self) {
+        for cell in &mut self.enemy_cells {
+            cell.clear();
+        }
+    }
+
+    #[inline]
+    fn pos_to_cell(pos: Vec2) -> Option<usize> {
+        // Convert from centered coords (-400..400, -350..350) to grid coords
+        let gx = ((pos.x + SCREEN_WIDTH / 2.0) / CELL_SIZE) as usize;
+        let gy = ((pos.y + SCREEN_HEIGHT / 2.0) / CELL_SIZE) as usize;
+
+        if gx < GRID_WIDTH && gy < GRID_HEIGHT {
+            Some(gy * GRID_WIDTH + gx)
+        } else {
+            None
+        }
+    }
+
+    fn insert_enemy(&mut self, entity: Entity, pos: Vec2) {
+        if let Some(idx) = Self::pos_to_cell(pos) {
+            self.enemy_cells[idx].push((entity, pos));
+        }
+    }
+
+    /// Get enemies in the same cell and adjacent cells (for border cases)
+    fn get_nearby_enemies(&self, pos: Vec2) -> impl Iterator<Item = &(Entity, Vec2)> {
+        let gx = ((pos.x + SCREEN_WIDTH / 2.0) / CELL_SIZE) as i32;
+        let gy = ((pos.y + SCREEN_HEIGHT / 2.0) / CELL_SIZE) as i32;
+
+        // Check 3x3 neighborhood for robustness
+        let mut indices = Vec::with_capacity(9);
+        for dy in -1..=1 {
+            for dx in -1..=1 {
+                let nx = gx + dx;
+                let ny = gy + dy;
+                if nx >= 0 && nx < GRID_WIDTH as i32 && ny >= 0 && ny < GRID_HEIGHT as i32 {
+                    indices.push((ny * GRID_WIDTH as i32 + nx) as usize);
+                }
+            }
+        }
+
+        indices
+            .into_iter()
+            .flat_map(move |idx| self.enemy_cells[idx].iter())
+    }
+}
+
 /// Collision plugin
 pub struct CollisionPlugin;
 
 impl Plugin for CollisionPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                player_projectile_enemy_collision,
-                enemy_projectile_player_collision,
-            )
-                .run_if(in_state(GameState::Playing)),
-        );
+        app.insert_resource(SpatialGrid::new())
+            .add_systems(
+                Update,
+                (
+                    update_spatial_grid,
+                    player_projectile_enemy_collision,
+                    enemy_projectile_player_collision,
+                )
+                    .chain()
+                    .run_if(in_state(GameState::Playing)),
+            );
     }
 }
 
-/// Player projectiles hitting enemies
+/// Update spatial grid with current enemy positions
+fn update_spatial_grid(
+    mut grid: ResMut<SpatialGrid>,
+    enemy_query: Query<(Entity, &Transform), With<Enemy>>,
+) {
+    grid.clear();
+    for (entity, transform) in enemy_query.iter() {
+        grid.insert_enemy(entity, transform.translation.truncate());
+    }
+}
+
+/// Player projectiles hitting enemies (optimized with spatial grid)
 fn player_projectile_enemy_collision(
     mut commands: Commands,
+    grid: Res<SpatialGrid>,
     projectile_query: Query<(Entity, &Transform, &ProjectileDamage), With<PlayerProjectile>>,
-    mut enemy_query: Query<(Entity, &Transform, &mut EnemyStats), With<Enemy>>,
+    mut enemy_query: Query<&mut EnemyStats, With<Enemy>>,
     player_query: Query<(&Transform, &ShipStats), With<Player>>,
     mut score: ResMut<ScoreSystem>,
     mut berserk: ResMut<BerserkSystem>,
@@ -47,15 +132,23 @@ fn player_projectile_enemy_collision(
         })
         .unwrap_or((Vec2::ZERO, None));
 
+    // Collision radius squared for faster distance checks
+    const COLLISION_RADIUS_SQ: f32 = 25.0 * 25.0;
+
     for (proj_entity, proj_transform, proj_damage) in projectile_query.iter() {
         let proj_pos = proj_transform.translation.truncate();
 
-        for (enemy_entity, enemy_transform, mut enemy_stats) in enemy_query.iter_mut() {
-            let enemy_pos = enemy_transform.translation.truncate();
-            let distance = (proj_pos - enemy_pos).length();
+        // Only check enemies in nearby grid cells (O(1) average instead of O(n))
+        for &(enemy_entity, enemy_pos) in grid.get_nearby_enemies(proj_pos) {
+            let dist_sq = (proj_pos - enemy_pos).length_squared();
 
-            // Simple circle collision (radius ~20 for enemies)
-            if distance < 25.0 {
+            // Use squared distance to avoid sqrt
+            if dist_sq < COLLISION_RADIUS_SQ {
+                // Get mutable enemy stats
+                let Ok(mut enemy_stats) = enemy_query.get_mut(enemy_entity) else {
+                    continue;
+                };
+
                 // Apply damage
                 enemy_stats.health -= proj_damage.damage;
 
@@ -150,12 +243,13 @@ fn enemy_projectile_player_collision(
     };
 
     let player_pos = player_transform.translation.truncate();
+    let hit_radius_sq = (hitbox.radius + 4.0) * (hitbox.radius + 4.0);
 
     for (proj_entity, proj_transform, proj_damage) in projectile_query.iter() {
         let proj_pos = proj_transform.translation.truncate();
-        let distance = (proj_pos - player_pos).length();
+        let dist_sq = (proj_pos - player_pos).length_squared();
 
-        if distance < hitbox.radius + 4.0 {
+        if dist_sq < hit_radius_sq {
             // Despawn projectile regardless
             commands.entity(proj_entity).despawn_recursive();
 

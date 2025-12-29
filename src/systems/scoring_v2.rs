@@ -4,6 +4,8 @@
 //! - Combo: Consecutive kill chains with timer
 //! - Heat: Weapon overheating for bonus multiplier
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 /// Combo timeout in seconds
@@ -31,9 +33,7 @@ pub enum HeatLevel {
 impl HeatLevel {
     pub fn from_heat(heat: f32, was_overheated: bool) -> Self {
         // Hysteresis: once overheated, stay overheated until heat < 50
-        if was_overheated && heat > 50.0 {
-            HeatLevel::Overheated
-        } else if heat >= 100.0 {
+        if (was_overheated && heat > 50.0) || heat >= 100.0 {
             HeatLevel::Overheated
         } else if heat >= 75.0 {
             HeatLevel::Hot

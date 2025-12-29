@@ -3,6 +3,8 @@
 //! Procedural sound effects for EVE Rebellion.
 //! Uses hound crate for proper WAV generation.
 
+#![allow(dead_code)]
+
 use bevy::audio::{PlaybackMode, Volume};
 use bevy::prelude::*;
 use std::f32::consts::PI;

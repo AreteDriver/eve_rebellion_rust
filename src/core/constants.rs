@@ -2,6 +2,8 @@
 //!
 //! All magic numbers and configuration values in one place.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 // =============================================================================

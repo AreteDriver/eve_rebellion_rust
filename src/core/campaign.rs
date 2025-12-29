@@ -2,6 +2,8 @@
 //!
 //! Handles mission progression, objectives, and storyline.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 /// Campaign acts - progression through the story

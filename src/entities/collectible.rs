@@ -2,6 +2,8 @@
 //!
 //! Power-ups, refugees, credits, etc.
 
+#![allow(dead_code)]
+
 use crate::core::*;
 use crate::systems::{check_liberation_milestone, ComboHeatSystem, DialogueEvent};
 use bevy::prelude::*;

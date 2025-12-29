@@ -3,6 +3,8 @@
 //! Loads and caches 3D ship models from GLTF/GLB files.
 //! Falls back to 2D sprites when models are unavailable.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 use std::collections::HashMap;
 
@@ -75,11 +77,11 @@ fn load_available_models(mut cache: ResMut<ShipModelCache>, asset_server: Res<As
 
     // Try to load each model
     for &(type_id, filename, _scale) in SHIP_MODELS {
-        if !cache.models.contains_key(&type_id) {
+        if let std::collections::hash_map::Entry::Vacant(e) = cache.models.entry(type_id) {
             // Bevy 0.15: Load GLTF scene using path#Scene0 syntax
             let path = format!("models/{}#Scene0", filename);
             let handle: Handle<Scene> = asset_server.load(&path);
-            cache.models.insert(type_id, handle);
+            e.insert(handle);
             info!("Queued model load: {} for type_id {}", filename, type_id);
         }
     }

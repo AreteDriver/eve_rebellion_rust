@@ -2,12 +2,14 @@
 //!
 //! Handles boss movement, attacks, phases, and defeat sequences.
 
+#![allow(dead_code)]
+
 use super::dialogue::DialogueEvent;
 use super::effects::ScreenShake;
 use crate::assets::ShipModelCache;
 use crate::core::*;
 use crate::entities::projectile::{
-    EnemyProjectile, EnemyProjectileBundle, ProjectileDamage, ProjectilePhysics,
+    EnemyProjectile, ProjectileDamage, ProjectilePhysics,
 };
 use crate::entities::{
     get_phase_threshold, spawn_boss, Boss, BossAttack, BossData, BossMovement, BossState,
@@ -232,7 +234,7 @@ fn boss_movement(
             }
             MovementPattern::Strafe => {
                 // Move to random positions
-                let target_x = ((movement.timer * 0.5).sin() * 200.0) as f32;
+                let target_x = (movement.timer * 0.5).sin() * 200.0;
                 let diff = target_x - transform.translation.x;
                 transform.translation.x += diff.signum() * movement.speed.min(diff.abs()) * dt;
             }

@@ -2,6 +2,8 @@
 //!
 //! Global state that persists across systems.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 /// Player score and combo system
@@ -95,6 +97,7 @@ impl ScoreSystem {
 
 /// Style grades (like Devil May Cry)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum StyleGrade {
     D,
     C,

@@ -3,6 +3,10 @@
 //! A Rust/Bevy rewrite of the Python arcade game inspired by EVE Online.
 //! Features 5 campaigns, EVE-style mechanics, and ship sprites from CCP's Image Server.
 
+// Bevy systems naturally have complex query types and many parameters
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 

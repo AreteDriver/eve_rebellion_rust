@@ -2,8 +2,14 @@
 //!
 //! Starfield, explosions, particle effects, screen shake, engine trails.
 
+#![allow(dead_code)]
+
 use crate::core::*;
 use bevy::prelude::*;
+
+/// Maximum particles to prevent slowdown during intense combat
+const MAX_EXPLOSION_PARTICLES: usize = 500;
+const MAX_ENGINE_PARTICLES: usize = 200;
 
 /// Effects plugin
 pub struct EffectsPlugin;
@@ -101,20 +107,32 @@ pub struct ExplosionParticle {
     pub max_lifetime: f32,
 }
 
-/// Handle explosion events
-fn handle_explosion_events(mut commands: Commands, mut events: EventReader<ExplosionEvent>) {
+/// Handle explosion events with particle cap
+fn handle_explosion_events(
+    mut commands: Commands,
+    mut events: EventReader<ExplosionEvent>,
+    particle_query: Query<&ExplosionParticle>,
+) {
+    let current_count = particle_query.iter().count();
+    let mut spawned = 0;
+
     for event in events.read() {
-        spawn_explosion(&mut commands, event.position, &event.size, event.color);
+        // Check particle cap before spawning
+        if current_count + spawned < MAX_EXPLOSION_PARTICLES {
+            let new_count =
+                spawn_explosion_capped(&mut commands, event.position, &event.size, event.color);
+            spawned += new_count;
+        }
     }
 }
 
-/// Spawn explosion particles
-pub fn spawn_explosion(
+/// Spawn explosion particles (returns count spawned)
+fn spawn_explosion_capped(
     commands: &mut Commands,
     position: Vec2,
     size: &ExplosionSize,
     color: Color,
-) {
+) -> usize {
     let (count, speed, lifetime, particle_size) = match size {
         ExplosionSize::Tiny => (5, 50.0, 0.2, 3.0),
         ExplosionSize::Small => (12, 100.0, 0.4, 5.0),
@@ -152,6 +170,18 @@ pub fn spawn_explosion(
             Transform::from_xyz(position.x, position.y, LAYER_EFFECTS),
         ));
     }
+
+    count
+}
+
+/// Spawn explosion particles (legacy public API)
+pub fn spawn_explosion(
+    commands: &mut Commands,
+    position: Vec2,
+    size: &ExplosionSize,
+    color: Color,
+) {
+    spawn_explosion_capped(commands, position, size, color);
 }
 
 /// Update explosion particles

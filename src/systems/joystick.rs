@@ -3,6 +3,8 @@
 //! Reads from /dev/input/js0 directly without needing libudev-dev.
 //! On non-Unix platforms, provides a no-op implementation.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 const DEADZONE: f32 = 0.15;

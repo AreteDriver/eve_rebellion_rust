@@ -2,6 +2,8 @@
 //!
 //! Handles Elder dialogue display during gameplay.
 
+#![allow(dead_code)]
+
 use crate::core::*;
 use bevy::prelude::*;
 
@@ -335,10 +337,5 @@ pub fn get_liberation_milestones() -> &'static [u32] {
 
 /// Check if a count has crossed a milestone
 pub fn check_liberation_milestone(old_count: u32, new_count: u32) -> Option<u32> {
-    for &milestone in get_liberation_milestones() {
-        if old_count < milestone && new_count >= milestone {
-            return Some(milestone);
-        }
-    }
-    None
+    get_liberation_milestones().iter().find(|&&milestone| old_count < milestone && new_count >= milestone).copied()
 }

@@ -2,7 +2,9 @@
 //!
 //! All enemy ship types, AI behaviors, and wave spawning.
 
-use crate::assets::{get_model_scale, ShipModelCache, ShipModelRotation};
+#![allow(dead_code)]
+
+use crate::assets::{ShipModelCache, ShipModelRotation};
 use crate::core::*;
 use crate::systems::EngineTrail;
 use bevy::prelude::*;
@@ -435,7 +437,7 @@ fn get_faction_weapon(type_id: u32) -> WeaponType {
         // Gallente - Drones/Blasters (Thermal)
         593 | 594 => WeaponType::Drone,
         // Minmatar (if any enemy) - Autocannons
-        587 | 585 | 586 => WeaponType::Autocannon,
+        585..=587 => WeaponType::Autocannon,
         _ => WeaponType::Laser,
     }
 }
@@ -447,7 +449,7 @@ pub fn spawn_enemy(
     position: Vec2,
     behavior: EnemyBehavior,
     sprite: Option<Handle<Image>>,
-    model_cache: Option<&ShipModelCache>,
+    _model_cache: Option<&ShipModelCache>,
 ) -> Entity {
     let (name, health, speed, score) = match type_id {
         // Amarr

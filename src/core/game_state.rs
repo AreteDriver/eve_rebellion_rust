@@ -2,6 +2,8 @@
 //!
 //! Defines all possible game states and Minmatar-focused enums.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 /// Main game state - controls which systems run and what's displayed

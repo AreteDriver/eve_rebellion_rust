@@ -322,7 +322,7 @@ fn draw_eve_health_arc(
         let is_filled = if i < half {
             i < filled_segments / 2
         } else {
-            (num_segments - i - 1) < (filled_segments + 1) / 2
+            (num_segments - i - 1) < filled_segments.div_ceil(2)
         };
 
         let color = if is_filled || fill_pct >= 1.0 {

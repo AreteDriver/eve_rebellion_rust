@@ -2,6 +2,8 @@
 //!
 //! All 4 EVE factions with ships, colors, doctrines, and lore.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 /// The four major factions of New Eden

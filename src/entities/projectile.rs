@@ -2,6 +2,8 @@
 //!
 //! Player bullets, enemy bullets, missiles, drones.
 
+#![allow(dead_code)]
+
 use crate::core::*;
 use bevy::prelude::*;
 
@@ -102,12 +104,8 @@ impl Plugin for ProjectilePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (
-                spawn_player_projectiles,
-                projectile_movement,
-                projectile_lifetime,
-                projectile_bounds_check,
-            )
+            (spawn_player_projectiles, projectile_update)
+                .chain()
                 .run_if(in_state(GameState::Playing)),
         );
     }
@@ -160,42 +158,31 @@ fn spawn_player_projectiles(
     }
 }
 
-/// Move all projectiles
-fn projectile_movement(time: Res<Time>, mut query: Query<(&mut Transform, &ProjectilePhysics)>) {
-    let dt = time.delta_secs();
-    for (mut transform, physics) in query.iter_mut() {
-        transform.translation.x += physics.velocity.x * dt;
-        transform.translation.y += physics.velocity.y * dt;
-    }
-}
-
-/// Update projectile lifetime
-fn projectile_lifetime(
+/// Combined projectile update: movement, lifetime, and bounds in one pass
+/// This reduces from 3 iterations over all projectiles to just 1.
+fn projectile_update(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut ProjectilePhysics)>,
+    mut query: Query<(Entity, &mut Transform, &mut ProjectilePhysics)>,
 ) {
     let dt = time.delta_secs();
-    for (entity, mut physics) in query.iter_mut() {
+
+    // Precompute bounds (with margin for off-screen cleanup)
+    const MARGIN: f32 = 50.0;
+    let half_w = SCREEN_WIDTH / 2.0 + MARGIN;
+    let half_h = SCREEN_HEIGHT / 2.0 + MARGIN;
+
+    for (entity, mut transform, mut physics) in query.iter_mut() {
+        // Update lifetime
         physics.lifetime -= dt;
-        if physics.lifetime <= 0.0 {
-            commands.entity(entity).despawn_recursive();
-        }
-    }
-}
 
-/// Remove projectiles that go off screen
-fn projectile_bounds_check(
-    mut commands: Commands,
-    query: Query<(Entity, &Transform), Or<(With<PlayerProjectile>, With<EnemyProjectile>)>>,
-) {
-    let margin = 50.0;
-    let half_w = SCREEN_WIDTH / 2.0 + margin;
-    let half_h = SCREEN_HEIGHT / 2.0 + margin;
+        // Move projectile
+        transform.translation.x += physics.velocity.x * dt;
+        transform.translation.y += physics.velocity.y * dt;
 
-    for (entity, transform) in query.iter() {
+        // Check lifetime and bounds in one go
         let pos = transform.translation;
-        if pos.x.abs() > half_w || pos.y.abs() > half_h {
+        if physics.lifetime <= 0.0 || pos.x.abs() > half_w || pos.y.abs() > half_h {
             commands.entity(entity).despawn_recursive();
         }
     }

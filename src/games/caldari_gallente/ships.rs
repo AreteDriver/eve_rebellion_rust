@@ -2,6 +2,8 @@
 //!
 //! Ship definitions for both factions - player and enemy rosters.
 
+#![allow(dead_code)]
+
 use crate::games::{EnemyShipDef, FactionShipPool, ModuleShip};
 use bevy::prelude::*;
 

@@ -3,6 +3,8 @@
 //! Complete menu flow: Title -> Difficulty -> Ship -> Playing
 //! Supports keyboard, mouse, and joystick input.
 
+#![allow(dead_code)]
+
 use crate::core::*;
 use crate::games::ActiveModule;
 use crate::systems::JoystickState;
@@ -1008,8 +1010,8 @@ fn ship_menu_input(
     }
 
     let ships = session.player_ships();
-    if is_confirm(&keyboard, &joystick) {
-        if selection.index < ships.len() {
+    if is_confirm(&keyboard, &joystick)
+        && selection.index < ships.len() {
             let ship = &ships[selection.index];
             let is_unlocked = ship.unlock_stage == 0; // TODO: proper unlock tracking
 
@@ -1024,7 +1026,6 @@ fn ship_menu_input(
                 );
             }
         }
-    }
 
     if keyboard.just_pressed(KeyCode::Escape) || joystick.back() {
         next_state.set(GameState::DifficultySelect);

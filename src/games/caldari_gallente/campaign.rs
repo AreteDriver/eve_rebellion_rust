@@ -2,6 +2,8 @@
 //!
 //! Battle of Caldari Prime mission chain.
 
+#![allow(dead_code)]
+
 use bevy::prelude::*;
 
 /// Mission definition for Caldari/Gallente campaign
@@ -131,6 +133,7 @@ pub const CG_EPILOGUE_SHIIGERU: CGMission = CGMission {
 
 /// Campaign state for Caldari/Gallente module
 #[derive(Debug, Clone, Resource)]
+#[derive(Default)]
 pub struct CGCampaignState {
     pub mission_index: usize,
     pub current_wave: u32,
@@ -140,18 +143,6 @@ pub struct CGCampaignState {
     pub t3_unlocked: bool,
 }
 
-impl Default for CGCampaignState {
-    fn default() -> Self {
-        Self {
-            mission_index: 0,
-            current_wave: 0,
-            in_mission: false,
-            boss_spawned: false,
-            boss_defeated: false,
-            t3_unlocked: false,
-        }
-    }
-}
 
 impl CGCampaignState {
     pub fn current_mission(&self) -> Option<&'static CGMission> {

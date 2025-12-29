@@ -3,6 +3,8 @@
 //! Evasive maneuvers: Thrust burst and Barrel roll with i-frames.
 //! Based on design doc config/maneuvers/evasion.json
 
+#![allow(dead_code)]
+
 use crate::core::*;
 use crate::entities::{Movement, Player, ShipStats};
 use bevy::prelude::*;
@@ -277,7 +279,7 @@ fn update_barrel_roll(
     // Visual rotation (full 360 roll)
     // Note: For 3D models, we need to handle this differently
     // For sprites, apply Z rotation
-    let roll_angle = progress * std::f32::consts::TAU * maneuver.barrel_roll_direction;
+    let _roll_angle = progress * std::f32::consts::TAU * maneuver.barrel_roll_direction;
 
     // Only apply sprite rotation if not using 3D model
     // (3D models have their own rotation handling)
