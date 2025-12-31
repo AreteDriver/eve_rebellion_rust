@@ -61,21 +61,29 @@ jobs:
       - name: Package (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cd target/${{ matrix.target }}/release
-          tar -czvf ../../../${{ github.event.repository.name }}-${{ matrix.artifact }}.tar.gz eve_rebellion
+          mkdir -p package
+          cp target/${{ matrix.target }}/release/eve_rebellion package/
+          cp -r assets package/
+          cd package
+          tar -czvf ../${{ github.event.repository.name }}-${{ matrix.artifact }}.tar.gz *
 
       - name: Package (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          cd target/${{ matrix.target }}/release
-          tar -czvf ../../../${{ github.event.repository.name }}-${{ matrix.artifact }}.tar.gz eve_rebellion
+          mkdir -p package
+          cp target/${{ matrix.target }}/release/eve_rebellion package/
+          cp -r assets package/
+          cd package
+          tar -czvf ../${{ github.event.repository.name }}-${{ matrix.artifact }}.tar.gz *
 
       - name: Package (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          cd target/${{ matrix.target }}/release
-          Compress-Archive -Path *.exe -DestinationPath ../../../${{ github.event.repository.name }}-${{ matrix.artifact }}.zip
+          New-Item -ItemType Directory -Force -Path package
+          Copy-Item target/${{ matrix.target }}/release/eve_rebellion.exe package/
+          Copy-Item -Recurse assets package/
+          Compress-Archive -Path package/* -DestinationPath ${{ github.event.repository.name }}-${{ matrix.artifact }}.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
