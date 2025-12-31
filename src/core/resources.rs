@@ -617,3 +617,313 @@ impl DifficultySettings {
         *self = Self::from_level(level);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ==================== ScoreSystem Tests ====================
+
+    #[test]
+    fn score_system_default_values() {
+        let s = ScoreSystem::default();
+        assert_eq!(s.score, 0);
+        assert_eq!(s.multiplier, 1.0);
+        assert_eq!(s.chain, 0);
+        assert!(s.no_damage_bonus);
+    }
+
+    #[test]
+    fn score_system_add_score_applies_multiplier() {
+        let mut s = ScoreSystem::default();
+        s.multiplier = 2.0;
+        s.add_score(100);
+        assert_eq!(s.score, 200);
+    }
+
+    #[test]
+    fn score_system_on_kill_extends_chain() {
+        let mut s = ScoreSystem::default();
+        s.on_kill(100);
+        assert_eq!(s.chain, 1);
+        assert_eq!(s.chain_timer, 2.0);
+        assert_eq!(s.multiplier, 1.1); // 1.0 + 1 * 0.1
+    }
+
+    #[test]
+    fn score_system_multiplier_caps_at_99_9() {
+        let mut s = ScoreSystem::default();
+        // Kill 1000 times to push multiplier
+        for _ in 0..1000 {
+            s.on_kill(1);
+        }
+        assert!(s.multiplier <= 99.9);
+        assert!(s.multiplier >= 99.0);
+    }
+
+    #[test]
+    fn score_system_chain_timer_decay_resets_chain() {
+        let mut s = ScoreSystem::default();
+        s.on_kill(100);
+        assert_eq!(s.chain, 1);
+
+        // Simulate time passing
+        s.update(2.1);
+        assert_eq!(s.chain, 0);
+        assert_eq!(s.multiplier, 1.0);
+    }
+
+    #[test]
+    fn score_system_grades() {
+        let mut s = ScoreSystem::default();
+
+        s.multiplier = 0.5;
+        assert_eq!(s.get_grade(), StyleGrade::D);
+
+        s.multiplier = 1.5;
+        assert_eq!(s.get_grade(), StyleGrade::C);
+
+        s.multiplier = 3.0;
+        assert_eq!(s.get_grade(), StyleGrade::B);
+
+        s.multiplier = 5.0;
+        assert_eq!(s.get_grade(), StyleGrade::A);
+
+        s.multiplier = 10.0;
+        assert_eq!(s.get_grade(), StyleGrade::S);
+
+        s.multiplier = 20.0;
+        assert_eq!(s.get_grade(), StyleGrade::SS);
+
+        s.multiplier = 50.0;
+        assert_eq!(s.get_grade(), StyleGrade::SSS);
+    }
+
+    #[test]
+    fn score_system_reset_stage() {
+        let mut s = ScoreSystem::default();
+        s.on_kill(100);
+        s.score = 5000;
+        s.no_damage_bonus = false;
+
+        s.reset_stage();
+
+        assert_eq!(s.chain, 0);
+        assert_eq!(s.multiplier, 1.0);
+        assert!(s.no_damage_bonus);
+        // Score persists through stage reset
+        assert_eq!(s.score, 5000);
+    }
+
+    #[test]
+    fn score_system_reset_game() {
+        let mut s = ScoreSystem::default();
+        s.on_kill(100);
+        s.score = 5000;
+        s.souls_liberated = 42;
+
+        s.reset_game();
+
+        assert_eq!(s.score, 0);
+        assert_eq!(s.souls_liberated, 0);
+        assert_eq!(s.multiplier, 1.0);
+    }
+
+    // ==================== BerserkSystem Tests ====================
+
+    #[test]
+    fn berserk_default_values() {
+        let b = BerserkSystem::default();
+        assert_eq!(b.kills_to_activate, 5);
+        assert_eq!(b.proximity_range, 80.0);
+        assert_eq!(b.duration, 8.0);
+        assert!(!b.is_active);
+    }
+
+    #[test]
+    fn berserk_proximity_kill_within_range_counts() {
+        let mut b = BerserkSystem::default();
+        b.on_kill_at_distance(50.0);
+        assert_eq!(b.proximity_kills, 1);
+    }
+
+    #[test]
+    fn berserk_kill_outside_range_ignored() {
+        let mut b = BerserkSystem::default();
+        b.on_kill_at_distance(100.0);
+        assert_eq!(b.proximity_kills, 0);
+    }
+
+    #[test]
+    fn berserk_activates_at_threshold() {
+        let mut b = BerserkSystem::default();
+        for i in 0..4 {
+            assert!(!b.on_kill_at_distance(50.0), "kill {} shouldn't activate", i);
+        }
+        assert!(b.on_kill_at_distance(50.0), "5th kill should activate");
+        assert!(b.is_active);
+        assert_eq!(b.timer, 8.0);
+        assert_eq!(b.proximity_kills, 0); // Reset after activation
+    }
+
+    #[test]
+    fn berserk_multipliers_when_active() {
+        let mut b = BerserkSystem::default();
+        assert_eq!(b.score_mult(), 1.0);
+        assert_eq!(b.damage_mult(), 1.0);
+        assert_eq!(b.speed_mult(), 1.0);
+
+        // Activate
+        for _ in 0..5 {
+            b.on_kill_at_distance(0.0);
+        }
+
+        assert_eq!(b.score_mult(), 2.0);
+        assert_eq!(b.damage_mult(), 2.0);
+        assert_eq!(b.speed_mult(), 1.5);
+    }
+
+    #[test]
+    fn berserk_duration_decay() {
+        let mut b = BerserkSystem::default();
+        for _ in 0..5 {
+            b.on_kill_at_distance(0.0);
+        }
+        assert!(b.is_active);
+
+        b.update(4.0);
+        assert!(b.is_active);
+        assert_eq!(b.timer, 4.0);
+
+        b.update(4.1);
+        assert!(!b.is_active);
+    }
+
+    #[test]
+    fn berserk_chain_timeout_resets_proximity_kills() {
+        let mut b = BerserkSystem::default();
+        b.on_kill_at_distance(50.0);
+        b.on_kill_at_distance(50.0);
+        assert_eq!(b.proximity_kills, 2);
+        assert_eq!(b.chain_timer, 3.0);
+
+        // Let chain expire
+        b.update(3.1);
+        assert_eq!(b.proximity_kills, 0);
+    }
+
+    #[test]
+    fn berserk_progress_calculation() {
+        let mut b = BerserkSystem::default();
+        assert_eq!(b.progress(), 0.0);
+
+        b.on_kill_at_distance(50.0);
+        b.on_kill_at_distance(50.0);
+        assert!((b.progress() - 0.4).abs() < 0.01); // 2/5
+
+        // Activate
+        for _ in 0..3 {
+            b.on_kill_at_distance(0.0);
+        }
+        assert_eq!(b.progress(), 1.0); // Full timer
+
+        b.update(4.0);
+        assert!((b.progress() - 0.5).abs() < 0.01); // Half timer
+    }
+
+    // ==================== DifficultyLevel Tests ====================
+
+    #[test]
+    fn difficulty_level_cycling() {
+        let d = DifficultyLevel::Carebear;
+        assert_eq!(d.next(), DifficultyLevel::Newbro);
+        assert_eq!(d.next().next(), DifficultyLevel::BitterVet);
+        assert_eq!(d.next().next().next(), DifficultyLevel::Triglavian);
+        assert_eq!(d.next().next().next().next(), DifficultyLevel::Carebear);
+    }
+
+    #[test]
+    fn difficulty_level_prev_cycling() {
+        let d = DifficultyLevel::Carebear;
+        assert_eq!(d.prev(), DifficultyLevel::Triglavian);
+        assert_eq!(DifficultyLevel::Newbro.prev(), DifficultyLevel::Carebear);
+    }
+
+    #[test]
+    fn difficulty_level_names() {
+        assert_eq!(DifficultyLevel::Carebear.name(), "CAREBEAR");
+        assert_eq!(DifficultyLevel::Newbro.name(), "NEWBRO");
+        assert_eq!(DifficultyLevel::BitterVet.name(), "BITTER VET");
+        assert_eq!(DifficultyLevel::Triglavian.name(), "TRIGLAVIAN");
+    }
+
+    // ==================== DifficultySettings Tests ====================
+
+    #[test]
+    fn difficulty_settings_carebear_is_easier() {
+        let settings = DifficultySettings::from_level(DifficultyLevel::Carebear);
+
+        // Player should be stronger
+        assert!(settings.player.hull_multiplier > 1.0);
+        assert!(settings.player.shield_multiplier > 1.0);
+        assert!(settings.player.damage_multiplier > 1.0);
+
+        // Enemies should be weaker
+        assert!(settings.enemy.health_multiplier < 1.0);
+        assert!(settings.enemy.damage_multiplier < 1.0);
+
+        // Score multiplier lower (easy mode = less reward)
+        assert!(settings.scoring.base_score_multiplier < 1.0);
+    }
+
+    #[test]
+    fn difficulty_settings_newbro_is_baseline() {
+        let settings = DifficultySettings::from_level(DifficultyLevel::Newbro);
+
+        assert_eq!(settings.player.hull_multiplier, 1.0);
+        assert_eq!(settings.enemy.health_multiplier, 1.0);
+        assert_eq!(settings.scoring.base_score_multiplier, 1.0);
+    }
+
+    #[test]
+    fn difficulty_settings_bittrevet_is_harder() {
+        let settings = DifficultySettings::from_level(DifficultyLevel::BitterVet);
+
+        // Player should be weaker
+        assert!(settings.player.hull_multiplier < 1.0);
+
+        // Enemies should be stronger
+        assert!(settings.enemy.health_multiplier > 1.0);
+        assert!(settings.enemy.damage_multiplier > 1.0);
+
+        // Score multiplier higher (hard mode = more reward)
+        assert!(settings.scoring.base_score_multiplier > 1.0);
+    }
+
+    #[test]
+    fn difficulty_settings_triglavian_is_nightmare() {
+        let settings = DifficultySettings::from_level(DifficultyLevel::Triglavian);
+
+        // Player very weak
+        assert!(settings.player.hull_multiplier <= 0.5);
+
+        // Enemies very strong - the 3.0x damage
+        assert!(settings.enemy.damage_multiplier >= 3.0);
+
+        // Boss doubled health
+        assert!(settings.boss.health_multiplier >= 2.0);
+
+        // Score multiplier highest
+        assert!(settings.scoring.base_score_multiplier >= 3.0);
+    }
+
+    #[test]
+    fn difficulty_settings_set_level() {
+        let mut settings = DifficultySettings::default();
+        assert_eq!(settings.level, DifficultyLevel::Newbro);
+
+        settings.set_level(DifficultyLevel::Triglavian);
+        assert_eq!(settings.level, DifficultyLevel::Triglavian);
+        assert!(settings.enemy.damage_multiplier >= 3.0);
+    }
+}

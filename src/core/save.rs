@@ -244,3 +244,173 @@ fn load_save_data(mut commands: Commands) {
 fn auto_save(save: Res<SaveData>) {
     save.save();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ==================== Ship Unlock Tests ====================
+
+    #[test]
+    fn ship_unlock_stage_zero_always_unlocked() {
+        let save = SaveData::default();
+        // unlock_stage 0 = always available
+        assert!(save.is_ship_unlocked(12345, 0, "Minmatar", "Amarr"));
+    }
+
+    #[test]
+    fn ship_unlock_explicit_unlock() {
+        let mut save = SaveData::default();
+        save.unlock_ship(587); // Wolf type_id
+
+        // Should be unlocked regardless of stage requirement
+        assert!(save.is_ship_unlocked(587, 5, "Minmatar", "Amarr"));
+    }
+
+    #[test]
+    fn ship_unlock_via_stage_progress() {
+        let mut save = SaveData::default();
+        save.complete_stage("Minmatar", "Amarr", 5, 1);
+
+        // Ship requiring stage 5 should be unlocked
+        assert!(save.is_ship_unlocked(587, 5, "Minmatar", "Amarr"));
+
+        // Ship requiring stage 6 should NOT be unlocked
+        assert!(!save.is_ship_unlocked(588, 6, "Minmatar", "Amarr"));
+    }
+
+    #[test]
+    fn ship_unlock_wrong_faction_not_counted() {
+        let mut save = SaveData::default();
+        save.complete_stage("Caldari", "Gallente", 10, 1);
+
+        // Progress in Caldari vs Gallente doesn't unlock Minmatar ships
+        assert!(!save.is_ship_unlocked(587, 5, "Minmatar", "Amarr"));
+    }
+
+    // ==================== Stage Progress Tests ====================
+
+    #[test]
+    fn complete_stage_creates_entry() {
+        let mut save = SaveData::default();
+        assert_eq!(save.get_highest_stage("Minmatar", "Amarr"), 0);
+
+        save.complete_stage("Minmatar", "Amarr", 3, 2);
+        assert_eq!(save.get_highest_stage("Minmatar", "Amarr"), 3);
+    }
+
+    #[test]
+    fn complete_stage_updates_highest() {
+        let mut save = SaveData::default();
+        save.complete_stage("Minmatar", "Amarr", 3, 1);
+        save.complete_stage("Minmatar", "Amarr", 5, 2);
+
+        assert_eq!(save.get_highest_stage("Minmatar", "Amarr"), 5);
+    }
+
+    #[test]
+    fn complete_stage_does_not_decrease() {
+        let mut save = SaveData::default();
+        save.complete_stage("Minmatar", "Amarr", 5, 1);
+        save.complete_stage("Minmatar", "Amarr", 3, 1); // Lower stage
+
+        assert_eq!(save.get_highest_stage("Minmatar", "Amarr"), 5);
+    }
+
+    #[test]
+    fn complete_stage_multiple_factions_independent() {
+        let mut save = SaveData::default();
+        save.complete_stage("Minmatar", "Amarr", 5, 1);
+        save.complete_stage("Caldari", "Gallente", 3, 1);
+
+        assert_eq!(save.get_highest_stage("Minmatar", "Amarr"), 5);
+        assert_eq!(save.get_highest_stage("Caldari", "Gallente"), 3);
+        assert_eq!(save.get_highest_stage("Gallente", "Caldari"), 0);
+    }
+
+    // ==================== High Score Tests ====================
+
+    #[test]
+    fn record_score_creates_entry() {
+        let mut save = SaveData::default();
+        assert_eq!(save.get_high_score("Minmatar", "Amarr"), 0);
+
+        save.record_score("Minmatar", "Amarr", 50000, 5);
+        assert_eq!(save.get_high_score("Minmatar", "Amarr"), 50000);
+    }
+
+    #[test]
+    fn record_score_only_updates_on_beat() {
+        let mut save = SaveData::default();
+        save.record_score("Minmatar", "Amarr", 50000, 5);
+        save.record_score("Minmatar", "Amarr", 30000, 3); // Lower score
+
+        assert_eq!(save.get_high_score("Minmatar", "Amarr"), 50000);
+    }
+
+    #[test]
+    fn record_score_updates_on_new_high() {
+        let mut save = SaveData::default();
+        save.record_score("Minmatar", "Amarr", 50000, 5);
+        save.record_score("Minmatar", "Amarr", 75000, 7); // Higher score
+
+        assert_eq!(save.get_high_score("Minmatar", "Amarr"), 75000);
+    }
+
+    #[test]
+    fn record_score_multiple_factions_independent() {
+        let mut save = SaveData::default();
+        save.record_score("Minmatar", "Amarr", 50000, 5);
+        save.record_score("Caldari", "Gallente", 100000, 10);
+
+        assert_eq!(save.get_high_score("Minmatar", "Amarr"), 50000);
+        assert_eq!(save.get_high_score("Caldari", "Gallente"), 100000);
+    }
+
+    // ==================== Credits Tests ====================
+
+    #[test]
+    fn add_credits_accumulates() {
+        let mut save = SaveData::default();
+        assert_eq!(save.lifetime_credits, 0);
+
+        save.add_credits(1000);
+        assert_eq!(save.lifetime_credits, 1000);
+
+        save.add_credits(500);
+        assert_eq!(save.lifetime_credits, 1500);
+    }
+
+    // ==================== Settings Tests ====================
+
+    #[test]
+    fn default_settings() {
+        let settings = GameSettings::default();
+        assert_eq!(settings.master_volume, 0.7);
+        assert_eq!(settings.sfx_volume, 0.8);
+        assert_eq!(settings.music_volume, 0.5);
+        assert!(settings.screen_shake);
+    }
+
+    // ==================== Serialization Tests ====================
+
+    #[test]
+    fn save_data_serialization_roundtrip() {
+        let mut save = SaveData::default();
+        save.complete_stage("Minmatar", "Amarr", 5, 3);
+        save.record_score("Minmatar", "Amarr", 50000, 5);
+        save.unlock_ship(587);
+        save.add_credits(10000);
+
+        // Serialize
+        let json = serde_json::to_string(&save).expect("serialize");
+
+        // Deserialize
+        let loaded: SaveData = serde_json::from_str(&json).expect("deserialize");
+
+        assert_eq!(loaded.get_highest_stage("Minmatar", "Amarr"), 5);
+        assert_eq!(loaded.get_high_score("Minmatar", "Amarr"), 50000);
+        assert!(loaded.unlocked_ships.contains(&587));
+        assert_eq!(loaded.lifetime_credits, 10000);
+    }
+}
