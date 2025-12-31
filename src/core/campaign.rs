@@ -501,3 +501,382 @@ pub struct BossSpawnEvent {
 pub struct ActCompleteEvent {
     pub act: Act,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ==================== Act Tests ====================
+
+    #[test]
+    fn act_default_is_act1() {
+        assert_eq!(Act::default(), Act::Act1);
+    }
+
+    #[test]
+    fn act_names() {
+        assert_eq!(Act::Act1.name(), "THE CALL");
+        assert_eq!(Act::Act2.name(), "THE STORM");
+        assert_eq!(Act::Act3.name(), "LIBERATION");
+    }
+
+    #[test]
+    fn act_catchphrases() {
+        assert_eq!(Act::Act1.catchphrase(), "In Rust We Trust!");
+        assert_eq!(Act::Act2.catchphrase(), "No more rust - just steel!");
+        assert_eq!(Act::Act3.catchphrase(), "For Freedom! For the Republic!");
+    }
+
+    #[test]
+    fn act_numbers() {
+        assert_eq!(Act::Act1.number(), 1);
+        assert_eq!(Act::Act2.number(), 2);
+        assert_eq!(Act::Act3.number(), 3);
+    }
+
+    #[test]
+    fn act_progression() {
+        assert_eq!(Act::Act1.next(), Some(Act::Act2));
+        assert_eq!(Act::Act2.next(), Some(Act::Act3));
+        assert_eq!(Act::Act3.next(), None); // Final act
+    }
+
+    #[test]
+    fn act_missions_not_empty() {
+        assert!(!Act::Act1.missions().is_empty());
+        assert!(!Act::Act2.missions().is_empty());
+        assert!(!Act::Act3.missions().is_empty());
+    }
+
+    #[test]
+    fn act_mission_counts() {
+        assert_eq!(Act::Act1.missions().len(), 4);
+        assert_eq!(Act::Act2.missions().len(), 5);
+        assert_eq!(Act::Act3.missions().len(), 4);
+    }
+
+    // ==================== BossType Tests ====================
+
+    #[test]
+    fn boss_type_default_is_none() {
+        assert_eq!(BossType::default(), BossType::None);
+    }
+
+    #[test]
+    fn boss_type_none_has_zero_health() {
+        assert_eq!(BossType::None.health(), 0.0);
+        assert_eq!(BossType::None.phases(), 0);
+    }
+
+    #[test]
+    fn boss_health_increases_per_act() {
+        // Act 1 bosses
+        let act1_health = BossType::TransportOverseer.health();
+        // Act 2 bosses
+        let act2_health = BossType::BattlestationCore.health();
+        // Act 3 bosses
+        let act3_health = BossType::AvatarTitan.health();
+
+        assert!(act1_health < act2_health);
+        assert!(act2_health < act3_health);
+    }
+
+    #[test]
+    fn boss_phases_increase_per_act() {
+        // Act 1 bosses have 2 phases
+        assert_eq!(BossType::TransportOverseer.phases(), 2);
+        assert_eq!(BossType::PatrolCommander.phases(), 2);
+
+        // Act 2 bosses have 3 phases
+        assert_eq!(BossType::CustomsCommandant.phases(), 3);
+        assert_eq!(BossType::BattlestationCore.phases(), 3);
+
+        // Act 3 bosses have 4-5 phases
+        assert_eq!(BossType::AbaddonBattleship.phases(), 4);
+        assert_eq!(BossType::AvatarTitan.phases(), 5);
+    }
+
+    #[test]
+    fn avatar_titan_is_final_boss() {
+        let avatar = BossType::AvatarTitan;
+        assert_eq!(avatar.health(), 5000.0);
+        assert_eq!(avatar.phases(), 5);
+        assert_eq!(avatar.eve_type_id(), 11567); // Avatar titan type_id
+    }
+
+    #[test]
+    fn boss_names_not_empty() {
+        let bosses = [
+            BossType::TransportOverseer,
+            BossType::PatrolCommander,
+            BossType::CustomsCommandant,
+            BossType::AvatarTitan,
+        ];
+
+        for boss in bosses {
+            assert!(!boss.name().is_empty());
+        }
+    }
+
+    // ==================== Mission Tests ====================
+
+    #[test]
+    fn all_missions_have_ids() {
+        for act in [Act::Act1, Act::Act2, Act::Act3] {
+            for mission in act.missions() {
+                assert!(!mission.id.is_empty(), "Mission should have an ID");
+            }
+        }
+    }
+
+    #[test]
+    fn all_missions_have_bosses() {
+        for act in [Act::Act1, Act::Act2, Act::Act3] {
+            for mission in act.missions() {
+                assert_ne!(
+                    mission.boss,
+                    BossType::None,
+                    "Mission {} should have a boss",
+                    mission.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn all_missions_have_waves() {
+        for act in [Act::Act1, Act::Act2, Act::Act3] {
+            for mission in act.missions() {
+                assert!(
+                    mission.enemy_waves > 0,
+                    "Mission {} should have waves",
+                    mission.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn first_mission_is_first_blood() {
+        let mission = &Act::Act1.missions()[0];
+        assert_eq!(mission.name, "FIRST BLOOD");
+        assert_eq!(mission.boss, BossType::TransportOverseer);
+    }
+
+    #[test]
+    fn final_mission_is_avatar() {
+        let missions = Act::Act3.missions();
+        let final_mission = &missions[missions.len() - 1];
+        assert_eq!(final_mission.name, "AVATAR");
+        assert_eq!(final_mission.boss, BossType::AvatarTitan);
+        assert_eq!(final_mission.souls_to_liberate, 100);
+    }
+
+    #[test]
+    fn total_missions_is_13() {
+        assert_eq!(CampaignState::total_missions(), 13);
+    }
+
+    // ==================== CampaignState Tests ====================
+
+    #[test]
+    fn campaign_state_default() {
+        let state = CampaignState::default();
+        assert_eq!(state.act, Act::Act1);
+        assert_eq!(state.mission_index, 0);
+        assert!(!state.in_mission);
+        assert!(state.no_damage_taken);
+    }
+
+    #[test]
+    fn campaign_state_current_mission() {
+        let state = CampaignState::default();
+        let mission = state.current_mission().unwrap();
+        assert_eq!(mission.name, "FIRST BLOOD");
+    }
+
+    #[test]
+    fn campaign_state_start_mission() {
+        let mut state = CampaignState::default();
+        state.start_mission();
+
+        assert!(state.in_mission);
+        assert_eq!(state.current_wave, 1);
+        assert!(!state.boss_spawned);
+        assert!(!state.boss_defeated);
+        assert!(state.no_damage_taken);
+    }
+
+    #[test]
+    fn campaign_state_next_wave() {
+        let mut state = CampaignState::default();
+        state.start_mission();
+        assert_eq!(state.current_wave, 1);
+
+        assert!(state.next_wave());
+        assert_eq!(state.current_wave, 2);
+    }
+
+    #[test]
+    fn campaign_state_is_boss_wave() {
+        let mut state = CampaignState::default();
+        state.start_mission();
+
+        // First mission has 3 waves, so wave 4 is boss
+        assert!(!state.is_boss_wave());
+
+        state.current_wave = 3;
+        assert!(!state.is_boss_wave());
+
+        state.current_wave = 4;
+        assert!(state.is_boss_wave());
+    }
+
+    #[test]
+    fn campaign_state_complete_mission_advances() {
+        let mut state = CampaignState::default();
+        state.start_mission();
+
+        assert!(state.complete_mission());
+        assert_eq!(state.mission_index, 1);
+        assert!(!state.in_mission);
+    }
+
+    #[test]
+    fn campaign_state_complete_act_advances() {
+        let mut state = CampaignState {
+            act: Act::Act1,
+            mission_index: 3, // Last mission in Act 1
+            ..Default::default()
+        };
+
+        assert!(state.complete_mission());
+        assert_eq!(state.act, Act::Act2);
+        assert_eq!(state.mission_index, 0);
+    }
+
+    #[test]
+    fn campaign_state_complete_final_returns_false() {
+        let mut state = CampaignState {
+            act: Act::Act3,
+            mission_index: 3, // Last mission in Act 3
+            ..Default::default()
+        };
+
+        assert!(!state.complete_mission()); // Campaign complete
+    }
+
+    #[test]
+    fn campaign_state_mission_number() {
+        let mut state = CampaignState::default();
+
+        // Act 1, Mission 1
+        assert_eq!(state.mission_number(), 1);
+
+        // Act 1, Mission 4
+        state.mission_index = 3;
+        assert_eq!(state.mission_number(), 4);
+
+        // Act 2, Mission 1
+        state.act = Act::Act2;
+        state.mission_index = 0;
+        assert_eq!(state.mission_number(), 5);
+
+        // Act 3, Mission 4 (final)
+        state.act = Act::Act3;
+        state.mission_index = 3;
+        assert_eq!(state.mission_number(), 13);
+    }
+
+    #[test]
+    fn campaign_state_stage_number() {
+        let mut state = CampaignState::default();
+        assert_eq!(state.stage_number(), 1);
+
+        state.act = Act::Act2;
+        assert_eq!(state.stage_number(), 2);
+
+        state.act = Act::Act3;
+        assert_eq!(state.stage_number(), 3);
+    }
+
+    #[test]
+    fn campaign_state_mission_in_stage() {
+        let mut state = CampaignState::default();
+        assert_eq!(state.mission_in_stage(), 1);
+
+        state.mission_index = 2;
+        assert_eq!(state.mission_in_stage(), 3);
+    }
+
+    #[test]
+    fn campaign_state_current_mission_name() {
+        let state = CampaignState::default();
+        assert_eq!(state.current_mission_name(), "FIRST BLOOD");
+    }
+
+    #[test]
+    fn campaign_state_invalid_mission_index() {
+        let state = CampaignState {
+            mission_index: 999,
+            ..Default::default()
+        };
+
+        // Should return None for invalid index
+        assert!(state.current_mission().is_none());
+        assert_eq!(state.current_mission_name(), "Unknown Mission");
+    }
+
+    // ==================== Wave Progression Tests ====================
+
+    #[test]
+    fn wave_progression_stops_at_boss() {
+        let mut state = CampaignState::default();
+        state.start_mission();
+
+        // First mission has 3 waves
+        assert!(state.next_wave()); // Wave 2
+        assert!(state.next_wave()); // Wave 3
+        assert!(state.next_wave()); // Wave 4 (boss)
+        assert!(!state.next_wave()); // Can't go past boss
+    }
+
+    // ==================== Mission Data Integrity ====================
+
+    #[test]
+    fn mission_ids_are_unique() {
+        let mut ids = std::collections::HashSet::new();
+        for act in [Act::Act1, Act::Act2, Act::Act3] {
+            for mission in act.missions() {
+                assert!(
+                    ids.insert(mission.id),
+                    "Duplicate mission ID: {}",
+                    mission.id
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn mission_waves_increase_through_campaign() {
+        let m1_waves = Act::Act1.missions()[0].enemy_waves;
+        let m9_waves = Act::Act2.missions()[4].enemy_waves; // Battlestation
+        let m13_waves = Act::Act3.missions()[3].enemy_waves; // Avatar
+
+        assert!(m1_waves < m9_waves);
+        assert!(m9_waves <= m13_waves);
+    }
+
+    #[test]
+    fn all_missions_have_primary_objectives() {
+        for act in [Act::Act1, Act::Act2, Act::Act3] {
+            for mission in act.missions() {
+                assert!(
+                    !mission.primary_objective.is_empty(),
+                    "Mission {} needs primary objective",
+                    mission.name
+                );
+            }
+        }
+    }
+}

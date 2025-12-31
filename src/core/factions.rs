@@ -932,24 +932,24 @@ mod tests {
     fn faction_carrier_type_ids() {
         // These are actual EVE Online type IDs
         assert_eq!(Faction::Minmatar.carrier_type_id(), 24483); // Nidhoggur
-        assert_eq!(Faction::Amarr.carrier_type_id(), 23757);    // Archon
-        assert_eq!(Faction::Caldari.carrier_type_id(), 23915);  // Chimera
+        assert_eq!(Faction::Amarr.carrier_type_id(), 23757); // Archon
+        assert_eq!(Faction::Caldari.carrier_type_id(), 23915); // Chimera
         assert_eq!(Faction::Gallente.carrier_type_id(), 23911); // Thanatos
     }
 
     #[test]
     fn faction_fighter_type_ids() {
-        assert_eq!(Faction::Minmatar.fighter_type_id(), 585);  // Slasher
-        assert_eq!(Faction::Amarr.fighter_type_id(), 589);     // Executioner
-        assert_eq!(Faction::Caldari.fighter_type_id(), 583);   // Condor
-        assert_eq!(Faction::Gallente.fighter_type_id(), 608);  // Atron
+        assert_eq!(Faction::Minmatar.fighter_type_id(), 585); // Slasher
+        assert_eq!(Faction::Amarr.fighter_type_id(), 589); // Executioner
+        assert_eq!(Faction::Caldari.fighter_type_id(), 583); // Condor
+        assert_eq!(Faction::Gallente.fighter_type_id(), 608); // Atron
     }
 
     #[test]
     fn faction_tough_fighter_type_ids() {
         assert_eq!(Faction::Minmatar.tough_fighter_type_id(), 598); // Breacher
-        assert_eq!(Faction::Amarr.tough_fighter_type_id(), 591);    // Tormentor
-        assert_eq!(Faction::Caldari.tough_fighter_type_id(), 602);  // Kestrel
+        assert_eq!(Faction::Amarr.tough_fighter_type_id(), 591); // Tormentor
+        assert_eq!(Faction::Caldari.tough_fighter_type_id(), 602); // Kestrel
         assert_eq!(Faction::Gallente.tough_fighter_type_id(), 594); // Incursus
     }
 
@@ -1099,7 +1099,7 @@ mod tests {
     fn game_session_selected_ship_clamps_index() {
         let mut session = GameSession::new(Faction::Minmatar, Faction::Amarr);
         session.selected_ship_index = 999; // Way out of bounds
-        // Should clamp to last valid ship
+                                           // Should clamp to last valid ship
         let ship = session.selected_ship();
         assert!(!ship.name.is_empty());
     }

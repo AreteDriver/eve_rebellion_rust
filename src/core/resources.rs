@@ -619,6 +619,7 @@ impl DifficultySettings {
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
 
@@ -635,8 +636,10 @@ mod tests {
 
     #[test]
     fn score_system_add_score_applies_multiplier() {
-        let mut s = ScoreSystem::default();
-        s.multiplier = 2.0;
+        let mut s = ScoreSystem {
+            multiplier: 2.0,
+            ..Default::default()
+        };
         s.add_score(100);
         assert_eq!(s.score, 200);
     }
@@ -758,7 +761,11 @@ mod tests {
     fn berserk_activates_at_threshold() {
         let mut b = BerserkSystem::default();
         for i in 0..4 {
-            assert!(!b.on_kill_at_distance(50.0), "kill {} shouldn't activate", i);
+            assert!(
+                !b.on_kill_at_distance(50.0),
+                "kill {} shouldn't activate",
+                i
+            );
         }
         assert!(b.on_kill_at_distance(50.0), "5th kill should activate");
         assert!(b.is_active);
