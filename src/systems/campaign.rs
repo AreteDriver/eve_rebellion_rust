@@ -6,6 +6,8 @@ use crate::assets::{ShipModelCache, ShipSpriteCache};
 use crate::core::events::BossDefeatedEvent;
 use crate::core::*;
 use crate::entities::{spawn_boss, spawn_enemy, Boss, BossData, BossState, Enemy, EnemyBehavior};
+use crate::games::ActiveModule;
+use bevy::ecs::schedule::common_conditions::not;
 use bevy::prelude::*;
 
 /// Campaign system plugin
@@ -13,26 +15,45 @@ pub struct CampaignPlugin;
 
 impl Plugin for CampaignPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), start_mission)
-            .add_systems(
-                Update,
-                (
-                    update_mission_timer,
-                    check_wave_complete,
-                    spawn_next_wave,
-                    update_boss_behavior,
-                    check_boss_defeated,
-                    check_mission_complete,
-                )
-                    .run_if(in_state(GameState::Playing)),
+        // These systems run only when NOT in Caldari/Gallente module
+        // (CG module has its own campaign systems)
+        app.add_systems(
+            OnEnter(GameState::Playing),
+            start_mission.run_if(not(is_cg_module)),
+        )
+        .add_systems(
+            Update,
+            (
+                update_mission_timer,
+                check_wave_complete,
+                spawn_next_wave,
+                update_boss_behavior,
+                check_boss_defeated,
+                check_mission_complete,
             )
-            .add_systems(OnEnter(GameState::BossIntro), spawn_mission_boss)
-            .add_systems(
-                Update,
-                boss_intro_sequence.run_if(in_state(GameState::BossIntro)),
-            )
-            .add_systems(OnEnter(GameState::BossFight), start_boss_fight);
+                .run_if(in_state(GameState::Playing))
+                .run_if(not(is_cg_module)),
+        )
+        .add_systems(
+            OnEnter(GameState::BossIntro),
+            spawn_mission_boss.run_if(not(is_cg_module)),
+        )
+        .add_systems(
+            Update,
+            boss_intro_sequence
+                .run_if(in_state(GameState::BossIntro))
+                .run_if(not(is_cg_module)),
+        )
+        .add_systems(
+            OnEnter(GameState::BossFight),
+            start_boss_fight.run_if(not(is_cg_module)),
+        );
     }
+}
+
+/// Run condition: is Caldari/Gallente module active?
+fn is_cg_module(active_module: Res<ActiveModule>) -> bool {
+    active_module.is_caldari_gallente()
 }
 
 /// Start mission when entering Playing state

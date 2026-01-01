@@ -6,11 +6,12 @@ use super::{ActiveModule, FactionInfo, GameModuleInfo, ModuleRegistry};
 use crate::core::{Faction, GameSession, GameState};
 use crate::systems::JoystickState;
 use bevy::prelude::*;
+use bevy::ecs::schedule::common_conditions::not;
 
 pub mod campaign;
 pub mod ships;
 
-pub use campaign::{NightmareBoss, NightmareEvent, ShiigeruNightmare};
+pub use campaign::{CGBossType, CGCampaignState, NightmareBoss, NightmareEvent, ShiigeruNightmare};
 pub use ships::*;
 
 /// Caldari/Gallente module plugin
@@ -51,6 +52,43 @@ impl Plugin for CaldariGallentePlugin {
         // Initialize resources
         app.init_resource::<CaldariGallenteShips>();
         app.init_resource::<ShiigeruNightmare>();
+        app.init_resource::<CGCampaignState>();
+
+        // CG Campaign systems - run instead of main campaign when CG module is active
+        app.add_systems(
+            OnEnter(GameState::Playing),
+            start_cg_mission
+                .run_if(is_caldari_gallente)
+                .run_if(not(nightmare_active)),
+        )
+        .add_systems(
+            Update,
+            (
+                update_cg_mission,
+                check_cg_wave_complete,
+                spawn_cg_wave,
+            )
+                .chain()
+                .run_if(in_state(GameState::Playing))
+                .run_if(is_caldari_gallente)
+                .run_if(not(nightmare_active)),
+        )
+        .add_systems(
+            OnEnter(GameState::BossIntro),
+            spawn_cg_boss.run_if(is_caldari_gallente),
+        )
+        .add_systems(
+            Update,
+            cg_boss_intro
+                .run_if(in_state(GameState::BossIntro))
+                .run_if(is_caldari_gallente),
+        )
+        .add_systems(
+            Update,
+            (update_cg_boss, check_cg_boss_defeated)
+                .run_if(in_state(GameState::BossFight))
+                .run_if(is_caldari_gallente),
+        );
 
         // Nightmare mode systems
         app.add_systems(
@@ -547,6 +585,356 @@ fn spawn_nightmare_hud(mut commands: Commands) {
                 TextColor(Color::srgb(0.8, 0.4, 0.4)),
             ));
         });
+}
+
+// ============================================================================
+// CG Campaign Systems
+// ============================================================================
+
+/// Component for CG boss entities
+#[derive(Component)]
+struct CGBoss {
+    boss_type: CGBossType,
+    health: f32,
+    max_health: f32,
+    current_phase: u32,
+    total_phases: u32,
+}
+
+/// Component for CG boss movement
+#[derive(Component)]
+struct CGBossMovement {
+    timer: f32,
+    speed: f32,
+}
+
+/// Component for CG boss attacks
+#[derive(Component)]
+struct CGBossAttack {
+    fire_timer: f32,
+    fire_rate: f32,
+}
+
+/// Start a CG mission when entering Playing state
+fn start_cg_mission(mut cg_campaign: ResMut<CGCampaignState>) {
+    cg_campaign.start_mission();
+
+    if let Some(mission) = cg_campaign.current_mission() {
+        info!(
+            "Starting CG Mission {}: {} - {}",
+            cg_campaign.mission_number(),
+            mission.name,
+            mission.description
+        );
+    }
+}
+
+/// Update CG mission timer
+fn update_cg_mission(
+    _time: Res<Time>,
+    cg_campaign: Res<CGCampaignState>,
+    nightmare: Res<ShiigeruNightmare>,
+) {
+    // Don't update if nightmare mode is active
+    if nightmare.active {
+        return;
+    }
+
+    if cg_campaign.in_mission {
+        // Timer tracking could be added here if needed
+    }
+}
+
+/// Check if current wave is complete in CG campaign
+fn check_cg_wave_complete(
+    cg_campaign: Res<CGCampaignState>,
+    enemy_query: Query<Entity, With<crate::entities::Enemy>>,
+    boss_query: Query<Entity, With<CGBoss>>,
+) {
+    // Don't check if we're in boss wave
+    if cg_campaign.is_boss_wave() {
+        return;
+    }
+
+    // Don't check if boss exists
+    if boss_query.iter().count() > 0 {
+        return;
+    }
+
+    // Wave complete when no enemies remain
+    let enemy_count = enemy_query.iter().count();
+    if enemy_count == 0 && cg_campaign.current_wave > 0 && cg_campaign.in_mission {
+        if let Some(mission) = cg_campaign.current_mission() {
+            if cg_campaign.current_wave <= mission.waves {
+                info!("CG Wave {} complete!", cg_campaign.current_wave);
+            }
+        }
+    }
+}
+
+/// Spawn next wave of enemies for CG campaign
+fn spawn_cg_wave(
+    mut commands: Commands,
+    mut cg_campaign: ResMut<CGCampaignState>,
+    session: Res<GameSession>,
+    difficulty: Res<crate::core::Difficulty>,
+    enemy_query: Query<Entity, With<crate::entities::Enemy>>,
+    boss_query: Query<Entity, With<CGBoss>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    use crate::entities::enemy::{spawn_enemy, EnemyBehavior};
+
+    // Only spawn if no enemies remain
+    if enemy_query.iter().count() > 0 || boss_query.iter().count() > 0 {
+        return;
+    }
+
+    let Some(mission) = cg_campaign.current_mission() else {
+        return;
+    };
+
+    // Check if it's boss time
+    if cg_campaign.current_wave > mission.waves {
+        if !cg_campaign.boss_spawned && mission.boss.is_some() {
+            // Transition to boss intro
+            next_state.set(GameState::BossIntro);
+        } else if mission.boss.is_none() {
+            // No boss mission - complete immediately
+            next_state.set(GameState::StageComplete);
+        }
+        return;
+    }
+
+    // Spawn wave enemies
+    let wave = cg_campaign.current_wave;
+    let base_count = 3 + wave as usize;
+    let spawn_mult = difficulty.spawn_rate_mult();
+    let count = (base_count as f32 * spawn_mult) as usize;
+
+    info!("CG: Spawning wave {} with {} enemies", wave, count);
+
+    // Get enemy type IDs based on enemy faction
+    let enemy_types: Vec<u32> = match session.enemy_faction {
+        Faction::Caldari => vec![601, 602, 603], // Condor, Merlin, Kestrel
+        Faction::Gallente => vec![607, 608, 609], // Atron, Incursus, Tristan
+        Faction::Amarr => vec![597, 589, 590],
+        Faction::Minmatar => vec![584, 585, 587],
+    };
+
+    for i in 0..count {
+        let type_id = enemy_types[fastrand::usize(..enemy_types.len())];
+        let x = (i as f32 - count as f32 / 2.0) * 80.0;
+        let y = 300.0 + 50.0 + (i as f32 * 20.0);
+
+        let behavior = match fastrand::u32(0..4) {
+            0 => EnemyBehavior::Linear,
+            1 => EnemyBehavior::Zigzag,
+            2 => EnemyBehavior::Homing,
+            _ => EnemyBehavior::Weaver,
+        };
+
+        spawn_enemy(&mut commands, type_id, Vec2::new(x, y), behavior, None, None);
+    }
+
+    cg_campaign.current_wave += 1;
+}
+
+/// Spawn CG boss for current mission
+fn spawn_cg_boss(
+    mut commands: Commands,
+    mut cg_campaign: ResMut<CGCampaignState>,
+    session: Res<GameSession>,
+) {
+    let Some(mission) = cg_campaign.current_mission() else {
+        return;
+    };
+
+    let Some(boss_type) = mission.boss else {
+        return;
+    };
+
+    info!("Spawning CG Boss: {}", boss_type.name());
+
+    let health = boss_type.health();
+    let phases = boss_type.phases();
+
+    // Boss color based on enemy faction
+    let boss_color = match session.enemy_faction {
+        Faction::Caldari => Color::srgb(0.4, 0.6, 0.9),   // Blue-ish for Caldari
+        Faction::Gallente => Color::srgb(0.4, 0.9, 0.5), // Green-ish for Gallente
+        _ => Color::srgb(1.0, 0.5, 0.5),
+    };
+
+    // Spawn the boss entity with Enemy + EnemyStats for collision system compatibility
+    commands.spawn((
+        crate::entities::Enemy,
+        crate::entities::EnemyStats {
+            type_id: 0, // CG boss uses custom type
+            name: boss_type.name().to_string(),
+            health,
+            max_health: health,
+            speed: 80.0,
+            score_value: (health as u64) * 10,
+            is_boss: true,
+            liberation_value: 50,
+        },
+        CGBoss {
+            boss_type,
+            health,
+            max_health: health,
+            current_phase: 1,
+            total_phases: phases,
+        },
+        CGBossMovement {
+            timer: 0.0,
+            speed: 80.0,
+        },
+        CGBossAttack {
+            fire_timer: 0.0,
+            fire_rate: 1.2,
+        },
+        Sprite {
+            color: boss_color,
+            custom_size: Some(Vec2::new(80.0, 80.0)), // Larger for boss
+            ..default()
+        },
+        Transform::from_xyz(0.0, 400.0, 10.0),
+    ));
+
+    cg_campaign.boss_spawned = true;
+}
+
+/// CG Boss intro sequence
+fn cg_boss_intro(
+    time: Res<Time>,
+    mut boss_query: Query<(&mut Transform, &CGBoss)>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut timer: Local<f32>,
+) {
+    *timer += time.delta_secs();
+
+    for (mut transform, boss) in boss_query.iter_mut() {
+        // Descend boss to battle position
+        let target_y = 200.0;
+        if transform.translation.y > target_y {
+            transform.translation.y -= 100.0 * time.delta_secs();
+        }
+
+        // After 2 seconds, start fight
+        if *timer > 2.0 {
+            *timer = 0.0;
+            next_state.set(GameState::BossFight);
+            info!("CG Boss battle started: {}", boss.boss_type.name());
+        }
+    }
+}
+
+/// Update CG boss behavior during fight
+fn update_cg_boss(
+    time: Res<Time>,
+    mut boss_query: Query<(
+        &mut Transform,
+        &mut CGBoss,
+        &mut CGBossMovement,
+        &mut CGBossAttack,
+        &crate::entities::EnemyStats,
+    )>,
+    player_query: Query<&Transform, (With<crate::entities::Player>, Without<CGBoss>)>,
+    mut commands: Commands,
+) {
+    let player_pos = player_query
+        .get_single()
+        .map(|t| t.translation.truncate())
+        .unwrap_or(Vec2::ZERO);
+
+    for (mut transform, mut boss, mut movement, mut attack, enemy_stats) in boss_query.iter_mut() {
+        let pos = transform.translation.truncate();
+        let dt = time.delta_secs();
+
+        // Sync health from EnemyStats (collision system updates this)
+        boss.health = enemy_stats.health;
+
+        // Movement - sweep pattern
+        movement.timer += dt;
+        let offset = (movement.timer * 0.5).sin() * 200.0;
+        transform.translation.x = offset;
+
+        // Phase transitions
+        let health_percent = boss.health / boss.max_health;
+        let phase_threshold = 1.0 - (boss.current_phase as f32 / boss.total_phases as f32);
+
+        if health_percent <= phase_threshold && boss.current_phase < boss.total_phases {
+            boss.current_phase += 1;
+            movement.speed *= 1.2;
+            attack.fire_rate *= 0.8;
+            info!("CG Boss entering phase {}!", boss.current_phase);
+        }
+
+        // Attack
+        attack.fire_timer += dt;
+        if attack.fire_timer >= attack.fire_rate {
+            attack.fire_timer = 0.0;
+
+            let dir = (player_pos - pos).normalize_or_zero();
+            let projectile_speed = 250.0 + (boss.current_phase as f32 * 50.0);
+
+            commands.spawn((
+                crate::entities::EnemyProjectile,
+                crate::entities::ProjectileDamage {
+                    damage: 20.0 + (boss.current_phase as f32 * 5.0),
+                    damage_type: crate::core::DamageType::EM,
+                    crit_chance: 0.08,
+                    crit_multiplier: 1.5,
+                },
+                crate::entities::Movement {
+                    velocity: dir * projectile_speed,
+                    max_speed: projectile_speed,
+                    ..default()
+                },
+                Sprite {
+                    color: Color::srgb(1.0, 0.8, 0.2),
+                    custom_size: Some(Vec2::new(8.0, 16.0)),
+                    ..default()
+                },
+                Transform::from_xyz(pos.x, pos.y - 30.0, 9.0),
+            ));
+        }
+    }
+}
+
+/// Check if CG boss is defeated
+fn check_cg_boss_defeated(
+    mut commands: Commands,
+    mut cg_campaign: ResMut<CGCampaignState>,
+    boss_query: Query<(Entity, &CGBoss, &crate::entities::EnemyStats)>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    for (entity, boss, enemy_stats) in boss_query.iter() {
+        // Check EnemyStats health (collision system updates this)
+        if enemy_stats.health <= 0.0 {
+            info!("CG Boss defeated: {}", boss.boss_type.name());
+
+            // Mark boss defeated
+            cg_campaign.boss_defeated = true;
+
+            // Check for T3 unlock
+            if let Some(mission) = cg_campaign.current_mission() {
+                if mission.unlocks_t3 {
+                    cg_campaign.t3_unlocked = true;
+                    info!("T3 Destroyers unlocked!");
+                }
+            }
+
+            // Advance to next mission
+            cg_campaign.complete_mission();
+
+            // Despawn boss
+            commands.entity(entity).despawn_recursive();
+
+            // Go to stage complete
+            next_state.set(GameState::StageComplete);
+        }
+    }
 }
 
 fn register_module(mut registry: ResMut<ModuleRegistry>) {
