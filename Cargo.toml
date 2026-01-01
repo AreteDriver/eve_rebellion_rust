@@ -9,7 +9,7 @@ repository = "https://github.com/AreteDriver/EVE_Rebellion"
 
 [dependencies]
 # UI
-bevy_egui = "0.31"
+bevy_egui = "0.33"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
