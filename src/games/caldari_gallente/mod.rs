@@ -21,6 +21,9 @@ impl Plugin for CaldariGallentePlugin {
         // Register module
         app.add_systems(Startup, register_module);
 
+        // Initialize state for mode select
+        app.init_state::<CGModeSelect>();
+
         // Faction select screen - only when this module is active
         app.add_systems(
             OnEnter(GameState::FactionSelect),
@@ -36,6 +39,14 @@ impl Plugin for CaldariGallentePlugin {
             OnExit(GameState::FactionSelect),
             despawn_faction_select.run_if(is_caldari_gallente),
         );
+
+        // Mode select screen (Campaign vs Nightmare) - Caldari only
+        app.add_systems(OnEnter(CGModeSelect::Active), spawn_mode_select)
+            .add_systems(
+                Update,
+                mode_select_input.run_if(in_state(CGModeSelect::Active)),
+            )
+            .add_systems(OnExit(CGModeSelect::Active), despawn_mode_select);
 
         // Initialize resources
         app.init_resource::<CaldariGallenteShips>();
@@ -53,6 +64,12 @@ impl Plugin for CaldariGallentePlugin {
                 .run_if(in_state(GameState::Playing))
                 .run_if(nightmare_active),
         );
+
+        // Spawn nightmare HUD when entering Playing in nightmare mode
+        app.add_systems(
+            OnEnter(GameState::Playing),
+            spawn_nightmare_hud.run_if(nightmare_active),
+        );
     }
 }
 
@@ -64,6 +81,245 @@ fn is_caldari_gallente(active_module: Res<ActiveModule>) -> bool {
 /// Run condition: is nightmare mode active?
 fn nightmare_active(nightmare: Res<ShiigeruNightmare>) -> bool {
     nightmare.active
+}
+
+// ============================================================================
+// Mode Select Screen (Caldari only - Campaign vs Nightmare)
+// ============================================================================
+
+/// State for mode selection
+#[derive(States, Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CGModeSelect {
+    #[default]
+    Inactive,
+    Active,
+}
+
+#[derive(Component)]
+struct ModeSelectRoot;
+
+#[derive(Component)]
+struct ModeOption {
+    is_nightmare: bool,
+}
+
+#[derive(Resource, Default)]
+struct ModeSelectState {
+    selected: usize, // 0 = Campaign, 1 = Nightmare
+    cooldown: f32,
+}
+
+fn spawn_mode_select(mut commands: Commands) {
+    info!("Spawning mode select screen (Campaign vs Nightmare)");
+    commands.init_resource::<ModeSelectState>();
+
+    // Root container
+    commands
+        .spawn((
+            ModeSelectRoot,
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                row_gap: Val::Px(30.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.02, 0.02, 0.05)),
+        ))
+        .with_children(|parent| {
+            // Title
+            parent.spawn((
+                Text::new("CALDARI STATE"),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(COLOR_CALDARI_ACCENT),
+            ));
+            parent.spawn((
+                Text::new("SELECT MODE"),
+                TextFont {
+                    font_size: 48.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                Node {
+                    margin: UiRect::bottom(Val::Px(40.0)),
+                    ..default()
+                },
+            ));
+
+            // Campaign option
+            spawn_mode_option(parent, false, "CAMPAIGN", "5 Mission Story Arc", true);
+
+            // Nightmare option
+            spawn_mode_option(
+                parent,
+                true,
+                "SHIIGERU NIGHTMARE",
+                "Endless Survival • High Scores",
+                false,
+            );
+
+            // Instructions
+            parent.spawn((
+                Text::new("[↑/↓] Select   [SPACE/ENTER] Confirm   [ESC] Back"),
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                Node {
+                    margin: UiRect::top(Val::Px(40.0)),
+                    ..default()
+                },
+            ));
+        });
+}
+
+fn spawn_mode_option(
+    parent: &mut ChildBuilder,
+    is_nightmare: bool,
+    title: &str,
+    subtitle: &str,
+    selected: bool,
+) {
+    let border_color = if selected {
+        if is_nightmare {
+            Color::srgb(0.9, 0.2, 0.2) // Red for nightmare
+        } else {
+            COLOR_CALDARI_ACCENT
+        }
+    } else {
+        Color::srgb(0.2, 0.2, 0.3)
+    };
+
+    let bg_color = if is_nightmare {
+        Color::srgb(0.15, 0.05, 0.05) // Dark red tint
+    } else {
+        COLOR_CALDARI_PRIMARY.with_alpha(0.3)
+    };
+
+    parent
+        .spawn((
+            ModeOption { is_nightmare },
+            Node {
+                width: Val::Px(400.0),
+                height: Val::Px(100.0),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                border: UiRect::all(Val::Px(3.0)),
+                ..default()
+            },
+            BackgroundColor(bg_color),
+            BorderColor(border_color),
+        ))
+        .with_children(|card| {
+            // Title
+            let title_color = if is_nightmare {
+                Color::srgb(1.0, 0.4, 0.4)
+            } else {
+                Color::WHITE
+            };
+            card.spawn((
+                Text::new(title),
+                TextFont {
+                    font_size: 28.0,
+                    ..default()
+                },
+                TextColor(title_color),
+            ));
+            // Subtitle
+            card.spawn((
+                Text::new(subtitle),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.6, 0.6, 0.6)),
+            ));
+        });
+}
+
+fn mode_select_input(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    joystick: Res<JoystickState>,
+    time: Res<Time>,
+    mut state: ResMut<ModeSelectState>,
+    mut nightmare: ResMut<ShiigeruNightmare>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut mode_state: ResMut<NextState<CGModeSelect>>,
+    mut options: Query<(&ModeOption, &mut BorderColor)>,
+) {
+    let dt = time.delta_secs();
+    state.cooldown = (state.cooldown - dt).max(0.0);
+
+    // Navigation
+    if state.cooldown <= 0.0 {
+        let move_up = keyboard.pressed(KeyCode::ArrowUp)
+            || keyboard.pressed(KeyCode::KeyW)
+            || joystick.dpad_y > 0;
+        let move_down = keyboard.pressed(KeyCode::ArrowDown)
+            || keyboard.pressed(KeyCode::KeyS)
+            || joystick.dpad_y < 0;
+
+        if move_up && state.selected > 0 {
+            state.selected = 0;
+            state.cooldown = 0.2;
+        } else if move_down && state.selected < 1 {
+            state.selected = 1;
+            state.cooldown = 0.2;
+        }
+    }
+
+    // Update option borders
+    for (option, mut border) in options.iter_mut() {
+        let is_selected = (!option.is_nightmare && state.selected == 0)
+            || (option.is_nightmare && state.selected == 1);
+
+        let color = if is_selected {
+            if option.is_nightmare {
+                Color::srgb(1.0, 0.3, 0.3) // Bright red
+            } else {
+                COLOR_CALDARI_ACCENT
+            }
+        } else {
+            Color::srgb(0.2, 0.2, 0.3)
+        };
+        *border = BorderColor(color);
+    }
+
+    // Confirm selection
+    if keyboard.just_pressed(KeyCode::Space)
+        || keyboard.just_pressed(KeyCode::Enter)
+        || joystick.confirm()
+    {
+        if state.selected == 1 {
+            // Nightmare mode selected
+            nightmare.start();
+            info!("Starting SHIIGERU NIGHTMARE mode!");
+        } else {
+            info!("Starting Campaign mode");
+        }
+        mode_state.set(CGModeSelect::Inactive);
+        next_state.set(GameState::DifficultySelect);
+    }
+
+    // Back to faction select
+    if keyboard.just_pressed(KeyCode::Escape) || joystick.back() {
+        mode_state.set(CGModeSelect::Inactive);
+        next_state.set(GameState::FactionSelect);
+    }
+}
+
+fn despawn_mode_select(mut commands: Commands, query: Query<Entity, With<ModeSelectRoot>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+    commands.remove_resource::<ModeSelectState>();
 }
 
 // ============================================================================
@@ -215,6 +471,82 @@ enum NightmareHudElement {
     Time,
     Kills,
     Hull,
+}
+
+/// Spawn the nightmare mode HUD
+fn spawn_nightmare_hud(mut commands: Commands) {
+    info!("Spawning nightmare mode HUD");
+
+    // HUD container at top-left
+    commands
+        .spawn((
+            NightmareHud,
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(10.0),
+                left: Val::Px(10.0),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(8.0),
+                padding: UiRect::all(Val::Px(12.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.1, 0.0, 0.0, 0.7)),
+        ))
+        .with_children(|parent| {
+            // Title
+            parent.spawn((
+                Text::new("⚠ SHIIGERU NIGHTMARE ⚠"),
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.3, 0.3)),
+            ));
+
+            // Wave counter
+            parent.spawn((
+                NightmareHudElement::Wave,
+                Text::new("WAVE 0"),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+
+            // Time survived
+            parent.spawn((
+                NightmareHudElement::Time,
+                Text::new("00:00"),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(COLOR_CALDARI_ACCENT),
+            ));
+
+            // Kills
+            parent.spawn((
+                NightmareHudElement::Kills,
+                Text::new("KILLS: 0"),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.7, 0.7, 0.7)),
+            ));
+
+            // Hull integrity
+            parent.spawn((
+                NightmareHudElement::Hull,
+                Text::new("HULL: 100%"),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.8, 0.4, 0.4)),
+            ));
+        });
 }
 
 fn register_module(mut registry: ResMut<ModuleRegistry>) {
@@ -597,6 +929,7 @@ fn faction_select_input(
     time: Res<Time>,
     mut state: ResMut<FactionSelectState>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut mode_state: ResMut<NextState<CGModeSelect>>,
     mut active_module: ResMut<ActiveModule>,
     mut session: ResMut<GameSession>,
     mut panels: Query<(&FactionPanel, &mut BorderColor)>,
@@ -679,7 +1012,14 @@ fn faction_select_input(
             player_faction.name(),
             enemy_faction.name()
         );
-        next_state.set(GameState::DifficultySelect);
+
+        // Caldari gets mode select (Campaign vs Nightmare)
+        // Gallente goes directly to difficulty (no nightmare mode)
+        if player_faction == Faction::Caldari {
+            mode_state.set(CGModeSelect::Active);
+        } else {
+            next_state.set(GameState::DifficultySelect);
+        }
     }
 
     // Back to module select
