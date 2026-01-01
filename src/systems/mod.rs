@@ -30,6 +30,8 @@ pub use spawning::*;
 
 use bevy::prelude::*;
 
+use crate::core::GameState;
+
 /// Plugin that registers all gameplay systems
 pub struct SystemsPlugin;
 
@@ -48,6 +50,23 @@ impl Plugin for SystemsPlugin {
             MusicPlugin,
             ManeuverPlugin,
             CampaignPlugin,
-        ));
+        ))
+        // Pause system - ESC during gameplay triggers pause
+        .add_systems(
+            Update,
+            pause_trigger_system
+                .run_if(in_state(GameState::Playing).or(in_state(GameState::BossFight))),
+        );
+    }
+}
+
+/// System that triggers pause when ESC or Start button is pressed during gameplay
+fn pause_trigger_system(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    joystick: Res<JoystickState>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if keyboard.just_pressed(KeyCode::Escape) || joystick.start() {
+        next_state.set(GameState::Paused);
     }
 }
