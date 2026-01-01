@@ -1,6 +1,6 @@
 # EVE Rebellion
 
-[![Version](https://img.shields.io/badge/version-1.4.1-blue.svg)](https://github.com/AreteDriver/eve_rebellion_rust/releases)
+[![Version](https://img.shields.io/badge/version-1.4.2-blue.svg)](https://github.com/AreteDriver/eve_rebellion_rust/releases)
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Web-purple.svg)]()
