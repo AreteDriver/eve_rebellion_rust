@@ -2,10 +2,14 @@
 //!
 //! Reads from /dev/input/js0 directly without needing libudev-dev.
 //! On non-Unix platforms, provides a no-op implementation.
+//!
+//! Also provides rumble/haptic feedback via Bevy's gamepad system.
 
 #![allow(dead_code)]
 
+use bevy::input::gamepad::{GamepadRumbleIntensity, GamepadRumbleRequest};
 use bevy::prelude::*;
+use std::time::Duration;
 
 const DEADZONE: f32 = 0.15;
 
@@ -14,7 +18,9 @@ pub struct JoystickPlugin;
 
 impl Plugin for JoystickPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<JoystickState>();
+        app.init_resource::<JoystickState>()
+            .add_event::<RumbleRequest>()
+            .add_systems(Update, process_rumble_requests);
 
         #[cfg(unix)]
         {
@@ -212,6 +218,104 @@ impl JoystickState {
     /// Check if left trigger is pressed (held state)
     pub fn left_trigger_pressed(&self) -> bool {
         self.left_trigger > 0.1
+    }
+}
+
+// ============================================================================
+// Controller Rumble/Haptic Feedback
+// ============================================================================
+
+/// Types of rumble effects
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RumbleType {
+    /// Light rumble for taking damage (weak motor, short)
+    PlayerHit,
+    /// Medium rumble for explosions (both motors, medium)
+    Explosion,
+    /// Heavy rumble for big explosions/boss kills (strong motor, long)
+    BigExplosion,
+    /// Powerful surge for berserk activation (escalating pattern)
+    BerserkActivate,
+    /// Light pulse for powerup collection
+    PowerupCollect,
+    /// Custom rumble with specified intensities
+    Custom {
+        strong: f32,
+        weak: f32,
+        duration_ms: u64,
+    },
+}
+
+impl RumbleType {
+    /// Get rumble parameters: (strong_motor, weak_motor, duration_ms)
+    fn params(&self) -> (f32, f32, u64) {
+        match self {
+            RumbleType::PlayerHit => (0.0, 0.4, 80),
+            RumbleType::Explosion => (0.5, 0.3, 120),
+            RumbleType::BigExplosion => (1.0, 0.5, 250),
+            RumbleType::BerserkActivate => (0.8, 0.6, 300),
+            RumbleType::PowerupCollect => (0.0, 0.25, 60),
+            RumbleType::Custom {
+                strong,
+                weak,
+                duration_ms,
+            } => (*strong, *weak, *duration_ms),
+        }
+    }
+}
+
+/// Event to request controller rumble
+#[derive(Event, Clone, Copy, Debug)]
+pub struct RumbleRequest {
+    pub rumble_type: RumbleType,
+}
+
+impl RumbleRequest {
+    pub fn new(rumble_type: RumbleType) -> Self {
+        Self { rumble_type }
+    }
+
+    pub fn player_hit() -> Self {
+        Self::new(RumbleType::PlayerHit)
+    }
+
+    pub fn explosion() -> Self {
+        Self::new(RumbleType::Explosion)
+    }
+
+    pub fn big_explosion() -> Self {
+        Self::new(RumbleType::BigExplosion)
+    }
+
+    pub fn berserk() -> Self {
+        Self::new(RumbleType::BerserkActivate)
+    }
+
+    pub fn powerup() -> Self {
+        Self::new(RumbleType::PowerupCollect)
+    }
+}
+
+/// System to process rumble requests and send to Bevy's gamepad system
+fn process_rumble_requests(
+    mut rumble_events: EventReader<RumbleRequest>,
+    mut rumble_writer: EventWriter<GamepadRumbleRequest>,
+    gamepads: Query<Entity, With<Gamepad>>,
+) {
+    for request in rumble_events.read() {
+        let (strong, weak, duration_ms) = request.rumble_type.params();
+
+        // Send rumble to all connected gamepads
+        for gamepad_entity in gamepads.iter() {
+            rumble_writer.send(GamepadRumbleRequest::Add {
+                gamepad: gamepad_entity,
+                intensity: GamepadRumbleIntensity {
+                    strong_motor: strong,
+                    weak_motor: weak,
+                },
+                duration: Duration::from_millis(duration_ms),
+            });
+        }
     }
 }
 

@@ -195,6 +195,7 @@ fn handle_pickup_effects(
     mut progress: ResMut<GameProgress>,
     mut heat_system: ResMut<ComboHeatSystem>,
     mut dialogue_events: EventWriter<DialogueEvent>,
+    mut rumble_events: EventWriter<crate::systems::RumbleRequest>,
 ) {
     let Ok((mut stats, mut effects)) = player_query.get_single_mut() else {
         return;
@@ -235,14 +236,17 @@ fn handle_pickup_effects(
             }
             CollectibleType::Overdrive => {
                 effects.overdrive_timer = 5.0; // 5 second speed boost
+                rumble_events.send(crate::systems::RumbleRequest::powerup());
                 info!("OVERDRIVE ACTIVATED!");
             }
             CollectibleType::DamageBoost => {
                 effects.damage_boost_timer = 10.0; // 10 second damage boost
+                rumble_events.send(crate::systems::RumbleRequest::powerup());
                 info!("DAMAGE BOOST!");
             }
             CollectibleType::Invulnerability => {
                 effects.invuln_timer = 3.0; // 3 seconds of invuln
+                rumble_events.send(crate::systems::RumbleRequest::powerup());
                 info!("INVULNERABLE!");
             }
             CollectibleType::Nanite => {

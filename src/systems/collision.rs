@@ -283,6 +283,7 @@ fn enemy_projectile_player_collision(
     mut score: ResMut<ScoreSystem>,
     mut damage_events: EventWriter<PlayerDamagedEvent>,
     mut dialogue_events: EventWriter<super::DialogueEvent>,
+    mut rumble_events: EventWriter<super::RumbleRequest>,
     mut screen_shake: ResMut<super::effects::ScreenShake>,
     mut next_state: ResMut<NextState<GameState>>,
     mut last_callout: Local<f32>,
@@ -331,6 +332,9 @@ fn enemy_projectile_player_collision(
                 damage_type: proj_damage.damage_type,
                 source_position: proj_pos,
             });
+
+            // Controller rumble on hit
+            rumble_events.send(super::RumbleRequest::player_hit());
 
             // Screen shake on hit
             screen_shake.small();

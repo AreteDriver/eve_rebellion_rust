@@ -122,6 +122,7 @@ fn handle_explosion_events(
     mut commands: Commands,
     mut events: EventReader<ExplosionEvent>,
     particle_query: Query<&ExplosionParticle>,
+    mut rumble_events: EventWriter<super::RumbleRequest>,
 ) {
     let current_count = particle_query.iter().count();
     let mut spawned = 0;
@@ -132,6 +133,17 @@ fn handle_explosion_events(
             let new_count =
                 spawn_explosion_capped(&mut commands, event.position, &event.size, event.color);
             spawned += new_count;
+
+            // Trigger rumble based on explosion size (only for large+ explosions to avoid spam)
+            match event.size {
+                ExplosionSize::Large => {
+                    rumble_events.send(super::RumbleRequest::explosion());
+                }
+                ExplosionSize::Massive => {
+                    rumble_events.send(super::RumbleRequest::big_explosion());
+                }
+                _ => {} // No rumble for tiny/small/medium (too spammy)
+            }
         }
     }
 }
