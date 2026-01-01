@@ -114,11 +114,16 @@ impl Plugin for MenuPlugin {
                     .run_if(in_state(GameState::GameOver)),
             )
             .add_systems(OnExit(GameState::GameOver), despawn_death_screen)
-            // Boss Intro
-            .add_systems(OnEnter(GameState::BossIntro), spawn_boss_intro)
+            // Boss Intro (Elder Fleet only - CG has its own)
+            .add_systems(
+                OnEnter(GameState::BossIntro),
+                spawn_boss_intro.run_if(is_elder_fleet),
+            )
             .add_systems(
                 Update,
-                boss_intro_update.run_if(in_state(GameState::BossIntro)),
+                boss_intro_update
+                    .run_if(in_state(GameState::BossIntro))
+                    .run_if(is_elder_fleet),
             )
             .add_systems(OnExit(GameState::BossIntro), despawn_menu::<BossIntroRoot>)
             // Stage Complete

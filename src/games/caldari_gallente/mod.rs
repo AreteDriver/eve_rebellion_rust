@@ -75,13 +75,17 @@ impl Plugin for CaldariGallentePlugin {
         )
         .add_systems(
             OnEnter(GameState::BossIntro),
-            spawn_cg_boss.run_if(is_caldari_gallente),
+            (spawn_cg_boss, spawn_cg_boss_intro).run_if(is_caldari_gallente),
         )
         .add_systems(
             Update,
-            cg_boss_intro
+            (cg_boss_intro, cg_boss_intro_update)
                 .run_if(in_state(GameState::BossIntro))
                 .run_if(is_caldari_gallente),
+        )
+        .add_systems(
+            OnExit(GameState::BossIntro),
+            despawn_cg_boss_intro.run_if(is_caldari_gallente),
         )
         .add_systems(
             Update,
@@ -615,6 +619,33 @@ struct CGBossAttack {
     fire_rate: f32,
 }
 
+// ============================================================================
+// CG Boss Intro UI Components
+// ============================================================================
+
+/// Root marker for CG boss intro overlay
+#[derive(Component)]
+struct CGBossIntroRoot;
+
+/// Warning text that pulses
+#[derive(Component)]
+struct CGBossIntroWarning {
+    timer: f32,
+}
+
+/// Boss name that fades in
+#[derive(Component)]
+struct CGBossIntroName {
+    timer: f32,
+}
+
+/// Boss dialogue that types in
+#[derive(Component)]
+struct CGBossIntroDialogue {
+    full_text: String,
+    timer: f32,
+}
+
 /// Start a CG mission when entering Playing state
 fn start_cg_mission(mut cg_campaign: ResMut<CGCampaignState>) {
     cg_campaign.start_mission();
@@ -826,6 +857,160 @@ fn cg_boss_intro(
             next_state.set(GameState::BossFight);
             info!("CG Boss battle started: {}", boss.boss_type.name());
         }
+    }
+}
+
+/// Spawn CG boss intro UI overlay
+fn spawn_cg_boss_intro(mut commands: Commands, cg_campaign: Res<CGCampaignState>) {
+    let Some(mission) = cg_campaign.current_mission() else {
+        return;
+    };
+
+    let Some(boss_type) = mission.boss else {
+        return;
+    };
+
+    let boss_name = boss_type.name();
+    let boss_title = boss_type.title();
+    let dialogue = boss_type.dialogue_intro();
+    let phases = boss_type.phases();
+
+    // Phase difficulty indicator
+    let phase_text = match phases {
+        1 => "Single Phase",
+        2 => "Two Phases",
+        3 => "Three Phases • Challenging",
+        4 => "Four Phases • Dangerous",
+        _ => "Multi-Phase",
+    };
+
+    commands
+        .spawn((
+            CGBossIntroRoot,
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(12.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.9)),
+        ))
+        .with_children(|parent| {
+            // Warning text (pulses)
+            parent.spawn((
+                Text::new("⚠ WARNING ⚠"),
+                TextFont {
+                    font_size: 28.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.2, 0.2)),
+                CGBossIntroWarning { timer: 0.0 },
+            ));
+
+            parent.spawn(Node {
+                height: Val::Px(15.0),
+                ..default()
+            });
+
+            // Boss name (fades in) - Caldari blue instead of Amarr gold
+            parent.spawn((
+                Text::new(boss_name),
+                TextFont {
+                    font_size: 72.0,
+                    ..default()
+                },
+                TextColor(Color::srgba(0.2, 0.6, 1.0, 0.0)), // Start transparent, Caldari blue
+                CGBossIntroName { timer: 0.0 },
+            ));
+
+            // Boss title
+            parent.spawn((
+                Text::new(boss_title),
+                TextFont {
+                    font_size: 22.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.4, 0.7, 0.9)), // Lighter blue
+            ));
+
+            // Phase indicator
+            parent.spawn((
+                Text::new(phase_text),
+                TextFont {
+                    font_size: 14.0,
+                    ..default()
+                },
+                TextColor(if phases >= 4 {
+                    Color::srgb(1.0, 0.4, 0.4) // Red for dangerous
+                } else if phases >= 3 {
+                    Color::srgb(1.0, 0.7, 0.3) // Orange for challenging
+                } else {
+                    Color::srgb(0.6, 0.6, 0.6) // Gray for normal
+                }),
+            ));
+
+            parent.spawn(Node {
+                height: Val::Px(30.0),
+                ..default()
+            });
+
+            // Boss dialogue (types in)
+            parent.spawn((
+                Text::new(""),
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.8, 0.8, 0.8)),
+                CGBossIntroDialogue {
+                    full_text: format!("\"{}\"", dialogue),
+                    timer: 0.0,
+                },
+            ));
+        });
+}
+
+/// Update CG boss intro animations
+fn cg_boss_intro_update(
+    time: Res<Time>,
+    mut warning_query: Query<(&mut TextColor, &mut CGBossIntroWarning)>,
+    mut name_query: Query<(&mut TextColor, &mut CGBossIntroName), Without<CGBossIntroWarning>>,
+    mut dialogue_query: Query<(&mut Text, &mut CGBossIntroDialogue)>,
+) {
+    let dt = time.delta_secs();
+
+    // Pulse warning text
+    for (mut color, mut warning) in warning_query.iter_mut() {
+        warning.timer += dt * 4.0;
+        let pulse = (warning.timer.sin() * 0.3 + 0.7).clamp(0.4, 1.0);
+        *color = TextColor(Color::srgb(1.0, 0.2 * pulse, 0.2 * pulse));
+    }
+
+    // Fade in boss name (Caldari blue)
+    for (mut color, mut name) in name_query.iter_mut() {
+        name.timer += dt * 2.0;
+        let alpha = (name.timer - 0.3).clamp(0.0, 1.0); // Delay 0.3s then fade in
+        *color = TextColor(Color::srgba(0.2, 0.6, 1.0, alpha));
+    }
+
+    // Type in dialogue
+    for (mut text, mut dialogue) in dialogue_query.iter_mut() {
+        dialogue.timer += dt;
+        let chars_to_show = ((dialogue.timer - 0.5) * 30.0) as usize; // 30 chars/sec, 0.5s delay
+        let chars_to_show = chars_to_show.min(dialogue.full_text.len());
+        if chars_to_show > 0 {
+            **text = dialogue.full_text[..chars_to_show].to_string();
+        }
+    }
+}
+
+/// Despawn CG boss intro UI
+fn despawn_cg_boss_intro(mut commands: Commands, query: Query<Entity, With<CGBossIntroRoot>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
     }
 }
 

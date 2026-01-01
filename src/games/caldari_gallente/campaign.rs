@@ -56,6 +56,24 @@ impl CGBossType {
             CGBossType::FleetAdmiral => 4,
         }
     }
+
+    pub fn title(&self) -> &'static str {
+        match self {
+            CGBossType::PatrolCommander => "Caldari Navy Patrol Wing",
+            CGBossType::FleetCommander => "Caldari Defense Fleet",
+            CGBossType::EliteSquadron => "State Protectorate Elite",
+            CGBossType::FleetAdmiral => "Caldari Navy High Command",
+        }
+    }
+
+    pub fn dialogue_intro(&self) -> &'static str {
+        match self {
+            CGBossType::PatrolCommander => "You dare violate Caldari space? The State will crush you.",
+            CGBossType::FleetCommander => "Federation dogs! You will learn to fear the Caldari Navy.",
+            CGBossType::EliteSquadron => "We are the finest pilots in New Eden. You face certain death.",
+            CGBossType::FleetAdmiral => "This ends now. For Caldari Prime. For the State!",
+        }
+    }
 }
 
 /// All missions in the Caldari/Gallente campaign
