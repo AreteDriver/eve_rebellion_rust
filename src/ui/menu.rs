@@ -2594,14 +2594,15 @@ struct PauseSelection {
 }
 
 /// Pause menu items
-const PAUSE_ITEM_COUNT: usize = 7;
+const PAUSE_ITEM_COUNT: usize = 8;
 const PAUSE_IDX_RESUME: usize = 0;
 const PAUSE_IDX_MASTER: usize = 1;
 const PAUSE_IDX_MUSIC: usize = 2;
 const PAUSE_IDX_SFX: usize = 3;
 const PAUSE_IDX_SHAKE: usize = 4;
-const PAUSE_IDX_RESTART: usize = 5;
-const PAUSE_IDX_QUIT: usize = 6;
+const PAUSE_IDX_RUMBLE: usize = 5;
+const PAUSE_IDX_RESTART: usize = 6;
+const PAUSE_IDX_QUIT: usize = 7;
 
 /// Slider type for identifying which setting to adjust
 #[derive(Clone, Copy, PartialEq)]
@@ -2610,6 +2611,7 @@ enum SliderType {
     MusicVolume,
     SfxVolume,
     ScreenShake,
+    Rumble,
 }
 
 /// Marker for slider bar fill
@@ -2631,6 +2633,7 @@ fn spawn_pause_menu(
     session: Res<GameSession>,
     sound_settings: Res<crate::systems::SoundSettings>,
     screen_shake: Res<crate::systems::ScreenShake>,
+    rumble_settings: Res<crate::systems::RumbleSettings>,
 ) {
     commands.insert_resource(PauseSelection::default());
 
@@ -2715,6 +2718,9 @@ fn spawn_pause_menu(
 
             // Screen shake slider
             spawn_settings_slider(parent, PAUSE_IDX_SHAKE, "SHAKE", screen_shake.multiplier, SliderType::ScreenShake);
+
+            // Rumble slider
+            spawn_settings_slider(parent, PAUSE_IDX_RUMBLE, "RUMBLE", rumble_settings.intensity, SliderType::Rumble);
 
             parent.spawn(Node {
                 height: Val::Px(4.0),
@@ -2862,6 +2868,7 @@ fn pause_menu_input(
     mut transitions: EventWriter<TransitionEvent>,
     mut sound_settings: ResMut<crate::systems::SoundSettings>,
     mut screen_shake: ResMut<crate::systems::ScreenShake>,
+    mut rumble_settings: ResMut<crate::systems::RumbleSettings>,
     mut item_query: Query<(&PauseMenuItem, &mut BackgroundColor)>,
     mut text_query: Query<(&PauseMenuItemText, &mut TextColor)>,
     mut slider_fill_query: Query<(&SliderFill, &mut Node)>,
@@ -2901,6 +2908,10 @@ fn pause_menu_input(
                 screen_shake.multiplier = (screen_shake.multiplier + delta).clamp(0.0, 1.0);
                 *cooldown = 0.08;
             }
+            PAUSE_IDX_RUMBLE => {
+                rumble_settings.intensity = (rumble_settings.intensity + delta).clamp(0.0, 1.0);
+                *cooldown = 0.08;
+            }
             _ => {}
         }
     }
@@ -2912,6 +2923,7 @@ fn pause_menu_input(
             SliderType::MusicVolume => sound_settings.music_volume,
             SliderType::SfxVolume => sound_settings.sfx_volume,
             SliderType::ScreenShake => screen_shake.multiplier,
+            SliderType::Rumble => rumble_settings.intensity,
         };
         node.width = Val::Percent(value * 100.0);
     }
@@ -2921,6 +2933,7 @@ fn pause_menu_input(
             SliderType::MusicVolume => sound_settings.music_volume,
             SliderType::SfxVolume => sound_settings.sfx_volume,
             SliderType::ScreenShake => screen_shake.multiplier,
+            SliderType::Rumble => rumble_settings.intensity,
         };
         **text = format!("{}%", (value * 100.0) as i32);
     }
@@ -2954,7 +2967,7 @@ fn pause_menu_input(
             PAUSE_IDX_QUIT => {
                 transitions.send(TransitionEvent::to(GameState::MainMenu));
             }
-            PAUSE_IDX_MASTER | PAUSE_IDX_MUSIC | PAUSE_IDX_SFX | PAUSE_IDX_SHAKE => {
+            PAUSE_IDX_MASTER | PAUSE_IDX_MUSIC | PAUSE_IDX_SFX | PAUSE_IDX_SHAKE | PAUSE_IDX_RUMBLE => {
                 // Pressing confirm on sliders does nothing (use left/right)
             }
             _ => {}

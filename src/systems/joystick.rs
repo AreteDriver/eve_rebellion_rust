@@ -13,12 +13,26 @@ use std::time::Duration;
 
 const DEADZONE: f32 = 0.15;
 
+/// Rumble/haptic feedback settings
+#[derive(Resource, Debug)]
+pub struct RumbleSettings {
+    /// Rumble intensity multiplier (0.0 = off, 1.0 = full)
+    pub intensity: f32,
+}
+
+impl Default for RumbleSettings {
+    fn default() -> Self {
+        Self { intensity: 1.0 }
+    }
+}
+
 /// Joystick input plugin
 pub struct JoystickPlugin;
 
 impl Plugin for JoystickPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<JoystickState>()
+            .init_resource::<RumbleSettings>()
             .add_event::<RumbleRequest>()
             .add_systems(Update, process_rumble_requests);
 
@@ -301,9 +315,22 @@ fn process_rumble_requests(
     mut rumble_events: EventReader<RumbleRequest>,
     mut rumble_writer: EventWriter<GamepadRumbleRequest>,
     gamepads: Query<Entity, With<Gamepad>>,
+    rumble_settings: Res<RumbleSettings>,
 ) {
+    // Skip if rumble is disabled
+    if rumble_settings.intensity <= 0.001 {
+        rumble_events.clear();
+        return;
+    }
+
+    let multiplier = rumble_settings.intensity;
+
     for request in rumble_events.read() {
         let (strong, weak, duration_ms) = request.rumble_type.params();
+
+        // Apply intensity multiplier
+        let strong = (strong * multiplier).clamp(0.0, 1.0);
+        let weak = (weak * multiplier).clamp(0.0, 1.0);
 
         // Send rumble to all connected gamepads
         for gamepad_entity in gamepads.iter() {

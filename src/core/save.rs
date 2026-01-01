@@ -4,7 +4,7 @@
 
 #![allow(dead_code)]
 
-use crate::systems::{ScreenShake, SoundSettings};
+use crate::systems::{RumbleSettings, ScreenShake, SoundSettings};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -65,9 +65,16 @@ pub struct GameSettings {
     /// Screen shake intensity (0.0 = off, 1.0 = full)
     #[serde(default = "default_shake_intensity")]
     pub screen_shake_intensity: f32,
+    /// Controller rumble intensity (0.0 = off, 1.0 = full)
+    #[serde(default = "default_rumble_intensity")]
+    pub rumble_intensity: f32,
 }
 
 fn default_shake_intensity() -> f32 {
+    1.0
+}
+
+fn default_rumble_intensity() -> f32 {
     1.0
 }
 
@@ -78,6 +85,7 @@ impl Default for GameSettings {
             sfx_volume: 0.8,
             music_volume: 0.5,
             screen_shake_intensity: 1.0,
+            rumble_intensity: 1.0,
         }
     }
 }
@@ -299,6 +307,7 @@ fn apply_saved_settings(
     save: Res<SaveData>,
     mut sound: ResMut<SoundSettings>,
     mut shake: ResMut<ScreenShake>,
+    mut rumble: ResMut<RumbleSettings>,
 ) {
     let settings = &save.settings;
 
@@ -310,24 +319,29 @@ fn apply_saved_settings(
     // Apply screen shake intensity
     shake.multiplier = settings.screen_shake_intensity;
 
+    // Apply rumble intensity
+    rumble.intensity = settings.rumble_intensity;
+
     info!(
-        "Applied saved settings: master={:.0}%, sfx={:.0}%, music={:.0}%, shake={:.0}%",
+        "Applied saved settings: master={:.0}%, sfx={:.0}%, music={:.0}%, shake={:.0}%, rumble={:.0}%",
         settings.master_volume * 100.0,
         settings.sfx_volume * 100.0,
         settings.music_volume * 100.0,
-        settings.screen_shake_intensity * 100.0
+        settings.screen_shake_intensity * 100.0,
+        settings.rumble_intensity * 100.0
     );
 }
 
 /// Sync runtime settings changes back to SaveData
-/// Only runs when SoundSettings or ScreenShake resources change
+/// Only runs when SoundSettings, ScreenShake, or RumbleSettings resources change
 fn sync_settings_to_save(
     sound: Res<SoundSettings>,
     shake: Res<ScreenShake>,
+    rumble: Res<RumbleSettings>,
     mut save: ResMut<SaveData>,
 ) {
-    // Only process if either resource changed this frame
-    if !sound.is_changed() && !shake.is_changed() {
+    // Only process if any resource changed this frame
+    if !sound.is_changed() && !shake.is_changed() && !rumble.is_changed() {
         return;
     }
 
@@ -337,8 +351,9 @@ fn sync_settings_to_save(
         || (settings.sfx_volume - sound.sfx_volume).abs() > 0.001
         || (settings.music_volume - sound.music_volume).abs() > 0.001;
     let shake_changed = (settings.screen_shake_intensity - shake.multiplier).abs() > 0.001;
+    let rumble_changed = (settings.rumble_intensity - rumble.intensity).abs() > 0.001;
 
-    if !sound_changed && !shake_changed {
+    if !sound_changed && !shake_changed && !rumble_changed {
         return;
     }
 
@@ -352,13 +367,17 @@ fn sync_settings_to_save(
     if shake_changed {
         settings.screen_shake_intensity = shake.multiplier;
     }
+    if rumble_changed {
+        settings.rumble_intensity = rumble.intensity;
+    }
 
     info!(
-        "Settings synced to save: master={:.0}%, sfx={:.0}%, music={:.0}%, shake={:.0}%",
+        "Settings synced to save: master={:.0}%, sfx={:.0}%, music={:.0}%, shake={:.0}%, rumble={:.0}%",
         settings.master_volume * 100.0,
         settings.sfx_volume * 100.0,
         settings.music_volume * 100.0,
-        settings.screen_shake_intensity * 100.0
+        settings.screen_shake_intensity * 100.0,
+        settings.rumble_intensity * 100.0
     );
 }
 
@@ -507,6 +526,7 @@ mod tests {
         assert_eq!(settings.sfx_volume, 0.8);
         assert_eq!(settings.music_volume, 0.5);
         assert_eq!(settings.screen_shake_intensity, 1.0);
+        assert_eq!(settings.rumble_intensity, 1.0);
     }
 
     // ==================== Serialization Tests ====================
