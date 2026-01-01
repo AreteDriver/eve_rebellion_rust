@@ -96,7 +96,7 @@ jobs:
         run: cargo build --release
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: eve_rebellion-linux
           path: target/release/eve_rebellion
@@ -130,7 +130,7 @@ jobs:
         run: cp -r assets web/
 
       - name: Upload WASM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: eve_rebellion-wasm
           path: web/
