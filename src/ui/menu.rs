@@ -1129,7 +1129,7 @@ fn options_menu_input(
 }
 
 // ============================================================================
-// Faction Select (Unified 4-Faction)
+// Faction Select (Elder Fleet - Minmatar vs Amarr)
 // ============================================================================
 
 fn spawn_faction_select(
@@ -1138,7 +1138,7 @@ fn spawn_faction_select(
     mut session: ResMut<GameSession>,
 ) {
     selection.index = 0;
-    selection.total = 4; // 4 factions
+    selection.total = 2; // Elder Fleet: Minmatar vs Amarr only
 
     // Default to Minmatar vs Amarr
     *session = GameSession::new(Faction::Minmatar, Faction::Amarr);
@@ -1158,6 +1158,16 @@ fn spawn_faction_select(
             BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
         ))
         .with_children(|parent| {
+            // Subtitle
+            parent.spawn((
+                Text::new("THE ELDER FLEET"),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.6, 0.5, 0.3)),
+            ));
+
             // Title
             parent.spawn((
                 Text::new("CHOOSE YOUR FACTION"),
@@ -1173,35 +1183,28 @@ fn spawn_faction_select(
                 ..default()
             });
 
-            // Faction grid - 2x2
+            // Faction row - Minmatar vs Amarr only (horizontal layout)
             parent
                 .spawn((Node {
                     flex_direction: FlexDirection::Row,
-                    column_gap: Val::Px(20.0),
+                    column_gap: Val::Px(40.0),
+                    align_items: AlignItems::Center,
                     ..default()
                 },))
                 .with_children(|row| {
-                    // Left column: Minmatar, Caldari
-                    row.spawn((Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(15.0),
-                        ..default()
-                    },))
-                        .with_children(|col| {
-                            spawn_faction_card(col, Faction::Minmatar, 0);
-                            spawn_faction_card(col, Faction::Caldari, 2);
-                        });
+                    spawn_faction_card(row, Faction::Minmatar, 0);
 
-                    // Right column: Amarr, Gallente
-                    row.spawn((Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(15.0),
-                        ..default()
-                    },))
-                        .with_children(|col| {
-                            spawn_faction_card(col, Faction::Amarr, 1);
-                            spawn_faction_card(col, Faction::Gallente, 3);
-                        });
+                    // VS divider
+                    row.spawn((
+                        Text::new("VS"),
+                        TextFont {
+                            font_size: 32.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                    ));
+
+                    spawn_faction_card(row, Faction::Amarr, 1);
                 });
 
             parent.spawn(Node {
@@ -1211,7 +1214,7 @@ fn spawn_faction_select(
 
             // Instructions
             parent.spawn((
-                Text::new("← → ↑ ↓ Navigate • A/ENTER Select • B/ESC Back"),
+                Text::new("← → Navigate • A/ENTER Select • B/ESC Back"),
                 TextFont {
                     font_size: 14.0,
                     ..default()
@@ -1435,8 +1438,8 @@ fn faction_select_input(
 ) {
     selection.cooldown -= time.delta_secs();
 
-    // 2D navigation for 2x2 grid
-    // Layout: 0=Minmatar(top-left), 1=Amarr(top-right), 2=Caldari(bottom-left), 3=Gallente(bottom-right)
+    // Elder Fleet: Simple left/right navigation for Minmatar vs Amarr
+    // Layout: 0=Minmatar(left), 1=Amarr(right)
     if selection.cooldown <= 0.0 {
         let left = keyboard.pressed(KeyCode::ArrowLeft)
             || keyboard.pressed(KeyCode::KeyA)
@@ -1444,23 +1447,13 @@ fn faction_select_input(
         let right = keyboard.pressed(KeyCode::ArrowRight)
             || keyboard.pressed(KeyCode::KeyD)
             || joystick.dpad_x > 0;
-        let up = keyboard.pressed(KeyCode::ArrowUp)
-            || keyboard.pressed(KeyCode::KeyW)
-            || joystick.dpad_y < 0;
-        let down = keyboard.pressed(KeyCode::ArrowDown)
-            || keyboard.pressed(KeyCode::KeyS)
-            || joystick.dpad_y > 0;
 
         let mut new_index = selection.index;
 
-        if left && (selection.index == 1 || selection.index == 3) {
+        if left && selection.index > 0 {
             new_index = selection.index - 1;
-        } else if right && (selection.index == 0 || selection.index == 2) {
+        } else if right && selection.index < selection.total - 1 {
             new_index = selection.index + 1;
-        } else if up && selection.index >= 2 {
-            new_index = selection.index - 2;
-        } else if down && selection.index <= 1 {
-            new_index = selection.index + 2;
         }
 
         if new_index != selection.index {
@@ -1469,15 +1462,13 @@ fn faction_select_input(
         }
     }
 
-    // Update card highlights
-    let factions = [
-        Faction::Minmatar,
-        Faction::Amarr,
-        Faction::Caldari,
-        Faction::Gallente,
-    ];
+    // Update card highlights - Elder Fleet: Minmatar vs Amarr
+    let factions = [Faction::Minmatar, Faction::Amarr];
 
     for (item, mut bg, mut border) in cards.iter_mut() {
+        if item.index >= factions.len() {
+            continue;
+        }
         let faction = factions[item.index];
         let is_selected = item.index == selection.index;
 
