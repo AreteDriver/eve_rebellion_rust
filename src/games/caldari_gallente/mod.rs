@@ -1364,21 +1364,10 @@ fn check_cg_boss_defeated(
             // Mark boss defeated
             cg_campaign.boss_defeated = true;
 
-            // Check for T3 unlock
-            if let Some(mission) = cg_campaign.current_mission() {
-                if mission.unlocks_t3 {
-                    cg_campaign.t3_unlocked = true;
-                    info!("T3 Destroyers unlocked!");
-                }
-            }
-
-            // Advance to next mission
-            cg_campaign.complete_mission();
-
             // Despawn boss
             commands.entity(entity).despawn_recursive();
 
-            // Go to stage complete
+            // Go to stage complete (mission advancement happens when player confirms)
             next_state.set(GameState::StageComplete);
         }
     }
@@ -1521,15 +1510,15 @@ fn spawn_cg_stage_complete(
 fn cg_stage_complete_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     joystick: Res<JoystickState>,
-    cg_campaign: Res<CGCampaignState>,
+    mut cg_campaign: ResMut<CGCampaignState>,
     mut transitions: EventWriter<crate::ui::TransitionEvent>,
 ) {
     if keyboard.just_pressed(KeyCode::Space)
         || keyboard.just_pressed(KeyCode::Enter)
         || joystick.confirm()
     {
-        // Check if there are more missions
-        if cg_campaign.mission_index + 1 < campaign::CG_MISSIONS.len() {
+        // Advance to next mission (returns false if campaign complete)
+        if cg_campaign.complete_mission() {
             // More missions available
             transitions.send(crate::ui::TransitionEvent::to(GameState::Playing));
         } else {
