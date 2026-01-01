@@ -390,6 +390,13 @@ fn wave_spawning(
                     .collect(),
             });
 
+            // Wave incoming callout on significant waves (every 5th or last before boss)
+            if manager.wave % 5 == 0 || manager.wave == manager.waves_per_stage {
+                dialogue_events.send(DialogueEvent::combat_callout(
+                    super::CombatCalloutType::WaveIncoming,
+                ));
+            }
+
             info!(
                 "Stage {} Wave {}/{}: {} enemies",
                 manager.current_stage, manager.wave, manager.waves_per_stage, wave_def.enemy_count

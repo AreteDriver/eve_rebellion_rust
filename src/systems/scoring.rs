@@ -30,6 +30,7 @@ fn update_berserk_system(
     mut berserk: ResMut<BerserkSystem>,
     mut end_events: EventWriter<BerserkEndedEvent>,
     mut screen_flash: ResMut<crate::systems::ScreenFlash>,
+    mut dialogue_events: EventWriter<super::DialogueEvent>,
 ) {
     let was_active = berserk.is_active;
     berserk.update(time.delta_secs());
@@ -47,6 +48,9 @@ fn update_berserk_system(
         if berserk.try_activate() {
             info!("BERSERK MODE ACTIVATED! 5x score for 8 seconds!");
             screen_flash.berserk(); // Red flash on activation
+            dialogue_events.send(super::DialogueEvent::combat_callout(
+                super::CombatCalloutType::BerserkActive,
+            ));
         }
     }
 }

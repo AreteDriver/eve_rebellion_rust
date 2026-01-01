@@ -117,10 +117,12 @@ fn player_projectile_enemy_collision(
     mut berserk: ResMut<BerserkSystem>,
     mut destroy_events: EventWriter<EnemyDestroyedEvent>,
     mut explosion_events: EventWriter<ExplosionEvent>,
+    mut dialogue_events: EventWriter<super::DialogueEvent>,
     mut screen_shake: ResMut<super::effects::ScreenShake>,
     mut screen_flash: ResMut<super::effects::ScreenFlash>,
     mut camera_zoom: ResMut<super::effects::CameraZoom>,
     icon_cache: Res<crate::assets::PowerupIconCache>,
+    mut boss_callout_sent: Local<bool>,
 ) {
     // Get player position and health for proximity check and smart powerups
     let (player_pos, player_health) = player_query
@@ -152,6 +154,17 @@ fn player_projectile_enemy_collision(
 
                 // Apply damage
                 enemy_stats.health -= proj_damage.damage;
+
+                // Boss low health callout (once per boss)
+                if enemy_stats.is_boss && !*boss_callout_sent {
+                    let health_pct = enemy_stats.health / enemy_stats.max_health;
+                    if health_pct > 0.0 && health_pct < 0.25 {
+                        dialogue_events.send(super::DialogueEvent::combat_callout(
+                            super::CombatCalloutType::BossLowHealth,
+                        ));
+                        *boss_callout_sent = true;
+                    }
+                }
 
                 // Add hit flash effect (white flash when damaged)
                 let original_color = sprite
@@ -214,6 +227,7 @@ fn player_projectile_enemy_collision(
                         screen_shake.massive();
                         screen_flash.massive(); // Big white flash for boss kills
                         camera_zoom.boss_kill(); // Dramatic zoom pulse
+                        *boss_callout_sent = false; // Reset for next boss
                     } else {
                         screen_shake.trigger(3.0, 0.1); // Small shake for regular enemies
                     }
@@ -260,9 +274,15 @@ fn enemy_projectile_player_collision(
     >,
     mut score: ResMut<ScoreSystem>,
     mut damage_events: EventWriter<PlayerDamagedEvent>,
+    mut dialogue_events: EventWriter<super::DialogueEvent>,
     mut screen_shake: ResMut<super::effects::ScreenShake>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut last_callout: Local<f32>,
+    time: Res<Time>,
 ) {
+    // Cooldown for health callouts (don't spam)
+    *last_callout += time.delta_secs();
+
     let Ok((player_entity, player_transform, mut player_stats, hitbox, powerups, maneuver, sprite)) =
         player_query.get_single_mut()
     else {
@@ -306,6 +326,24 @@ fn enemy_projectile_player_collision(
 
             // Screen shake on hit
             screen_shake.small();
+
+            // Health callouts (with 8 second cooldown)
+            if *last_callout > 8.0 {
+                let total_hp = player_stats.shield + player_stats.armor + player_stats.hull;
+                let max_hp = player_stats.max_shield + player_stats.max_armor + player_stats.max_hull;
+                let health_pct = total_hp / max_hp;
+                if health_pct < 0.2 {
+                    dialogue_events.send(super::DialogueEvent::combat_callout(
+                        super::CombatCalloutType::NearDeath,
+                    ));
+                    *last_callout = 0.0;
+                } else if health_pct < 0.4 {
+                    dialogue_events.send(super::DialogueEvent::combat_callout(
+                        super::CombatCalloutType::LowHealth,
+                    ));
+                    *last_callout = 0.0;
+                }
+            }
 
             if destroyed {
                 info!("Player destroyed!");
