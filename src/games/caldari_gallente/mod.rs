@@ -3,7 +3,7 @@
 //! Caldari vs Gallente faction warfare over Caldari Prime.
 
 use super::{ActiveModule, FactionInfo, GameModuleInfo, ModuleRegistry};
-use crate::core::{Faction, GameSession, GameState};
+use crate::core::{Difficulty, Faction, GameSession, GameState};
 use crate::systems::JoystickState;
 use bevy::prelude::*;
 use bevy::ecs::schedule::common_conditions::not;
@@ -1037,6 +1037,7 @@ fn spawn_cg_boss(
     mut commands: Commands,
     mut cg_campaign: ResMut<CGCampaignState>,
     session: Res<GameSession>,
+    difficulty: Res<Difficulty>,
 ) {
     let Some(mission) = cg_campaign.current_mission() else {
         return;
@@ -1046,10 +1047,15 @@ fn spawn_cg_boss(
         return;
     };
 
-    info!("Spawning CG Boss: {}", boss_type.name());
+    info!("Spawning CG Boss: {} (difficulty: {:?})", boss_type.name(), *difficulty);
 
-    let health = boss_type.health();
+    // Scale health by difficulty
+    let base_health = boss_type.health();
+    let health = base_health * difficulty.enemy_health_mult();
     let phases = boss_type.phases();
+
+    // Scale fire rate by difficulty (lower = faster attacks)
+    let fire_rate = 1.2 / difficulty.enemy_fire_rate_mult();
 
     // Boss color based on enemy faction
     let boss_color = match session.enemy_faction {
@@ -1084,7 +1090,7 @@ fn spawn_cg_boss(
         },
         CGBossAttack {
             fire_timer: 0.0,
-            fire_rate: 1.2,
+            fire_rate, // Scaled by difficulty
         },
         Sprite {
             color: boss_color,
@@ -1288,6 +1294,7 @@ fn update_cg_boss(
     )>,
     player_query: Query<&Transform, (With<crate::entities::Player>, Without<CGBoss>)>,
     mut commands: Commands,
+    difficulty: Res<Difficulty>,
 ) {
     let player_pos = player_query
         .get_single()
@@ -1325,10 +1332,14 @@ fn update_cg_boss(
             let dir = (player_pos - pos).normalize_or_zero();
             let projectile_speed = 250.0 + (boss.current_phase as f32 * 50.0);
 
+            // Scale damage by difficulty
+            let base_damage = 20.0 + (boss.current_phase as f32 * 5.0);
+            let scaled_damage = base_damage * difficulty.enemy_damage_mult();
+
             commands.spawn((
                 crate::entities::EnemyProjectile,
                 crate::entities::ProjectileDamage {
-                    damage: 20.0 + (boss.current_phase as f32 * 5.0),
+                    damage: scaled_damage,
                     damage_type: crate::core::DamageType::EM,
                     crit_chance: 0.08,
                     crit_multiplier: 1.5,
