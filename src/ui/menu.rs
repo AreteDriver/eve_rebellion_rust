@@ -2760,6 +2760,7 @@ fn spawn_death_screen(
     score: Res<ScoreSystem>,
     campaign: Res<CampaignState>,
     mut endless: ResMut<crate::core::EndlessMode>,
+    mut nightmare: ResMut<crate::games::caldari_gallente::ShiigeruNightmare>,
     session: Res<GameSession>,
     save_data: Res<SaveData>,
 ) {
@@ -2772,13 +2773,33 @@ fn spawn_death_screen(
         endless.end_run();
     }
 
+    // End nightmare run if active
+    let was_nightmare = nightmare.active;
+    let nightmare_stats = if was_nightmare {
+        Some((
+            nightmare.wave,
+            nightmare.time_survived,
+            nightmare.kills,
+            nightmare.mini_bosses_defeated,
+            nightmare.wave > nightmare.best_wave,
+            nightmare.time_survived > nightmare.best_time,
+        ))
+    } else {
+        None
+    };
+    if was_nightmare {
+        nightmare.end();
+    }
+
     // Get high score for comparison
     let high_score =
         save_data.get_high_score(session.player_faction.name(), session.enemy_faction.name());
     let is_new_high = score.score > high_score && score.score > 0;
 
-    // Get mission info - different for endless mode
-    let mission_name = if was_endless {
+    // Get mission info - different for endless/nightmare mode
+    let mission_name = if was_nightmare {
+        "SHIIGERU NIGHTMARE".to_string()
+    } else if was_endless {
         format!("Endless Wave {}", endless.wave)
     } else {
         campaign.current_mission_name().to_string()
@@ -2907,49 +2928,132 @@ fn spawn_death_screen(
                 ));
             }
 
-            // Stats row
-            parent
-                .spawn(Node {
-                    flex_direction: FlexDirection::Row,
-                    column_gap: Val::Px(30.0),
-                    ..default()
-                })
-                .with_children(|row| {
-                    if score.souls_liberated > 0 {
-                        row.spawn((
-                            Text::new(format!("Souls: {}", score.souls_liberated)),
+            // Stats row - different for nightmare mode
+            if let Some((wave, time, kills, bosses, new_wave_record, new_time_record)) =
+                nightmare_stats
+            {
+                // Nightmare-specific stats
+                parent
+                    .spawn(Node {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        row_gap: Val::Px(8.0),
+                        ..default()
+                    })
+                    .with_children(|col| {
+                        // Wave reached
+                        let wave_text = if new_wave_record {
+                            format!("★ WAVE {} (NEW RECORD!) ★", wave)
+                        } else {
+                            format!("Wave Reached: {}", wave)
+                        };
+                        col.spawn((
+                            Text::new(wave_text),
+                            TextFont {
+                                font_size: 24.0,
+                                ..default()
+                            },
+                            TextColor(if new_wave_record {
+                                Color::srgb(1.0, 0.9, 0.0)
+                            } else {
+                                Color::srgb(0.9, 0.5, 0.5)
+                            }),
+                        ));
+
+                        // Time survived
+                        let mins = (time / 60.0) as u32;
+                        let secs = (time % 60.0) as u32;
+                        let time_text = if new_time_record {
+                            format!("★ {:02}:{:02} (NEW RECORD!) ★", mins, secs)
+                        } else {
+                            format!("Time Survived: {:02}:{:02}", mins, secs)
+                        };
+                        col.spawn((
+                            Text::new(time_text),
                             TextFont {
                                 font_size: 20.0,
                                 ..default()
                             },
-                            TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                            TextColor(if new_time_record {
+                                Color::srgb(1.0, 0.9, 0.0)
+                            } else {
+                                Color::srgb(0.7, 0.7, 0.7)
+                            }),
                         ));
-                    }
 
-                    if score.chain > 1 {
-                        row.spawn((
-                            Text::new(format!("Chain: {}x", score.chain)),
-                            TextFont {
-                                font_size: 20.0,
-                                ..default()
-                            },
-                            TextColor(Color::srgb(0.59, 0.51, 0.35)),
-                        ));
-                    }
-
-                    row.spawn((
-                        Text::new(format!(
-                            "Stage {}-{}",
-                            campaign.stage_number(),
-                            campaign.mission_in_stage()
-                        )),
-                        TextFont {
-                            font_size: 20.0,
+                        // Kills and bosses row
+                        col.spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: Val::Px(30.0),
                             ..default()
-                        },
-                        TextColor(Color::srgb(0.59, 0.51, 0.35)),
-                    ));
-                });
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Text::new(format!("Kills: {}", kills)),
+                                TextFont {
+                                    font_size: 18.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                            ));
+
+                            if bosses > 0 {
+                                row.spawn((
+                                    Text::new(format!("Mini-Bosses: {}", bosses)),
+                                    TextFont {
+                                        font_size: 18.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                                ));
+                            }
+                        });
+                    });
+            } else {
+                // Regular campaign stats
+                parent
+                    .spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        column_gap: Val::Px(30.0),
+                        ..default()
+                    })
+                    .with_children(|row| {
+                        if score.souls_liberated > 0 {
+                            row.spawn((
+                                Text::new(format!("Souls: {}", score.souls_liberated)),
+                                TextFont {
+                                    font_size: 20.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                            ));
+                        }
+
+                        if score.chain > 1 {
+                            row.spawn((
+                                Text::new(format!("Chain: {}x", score.chain)),
+                                TextFont {
+                                    font_size: 20.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                            ));
+                        }
+
+                        row.spawn((
+                            Text::new(format!(
+                                "Stage {}-{}",
+                                campaign.stage_number(),
+                                campaign.mission_in_stage()
+                            )),
+                            TextFont {
+                                font_size: 20.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.59, 0.51, 0.35)),
+                        ));
+                    });
+            }
 
             // Spacer
             parent.spawn(Node {
