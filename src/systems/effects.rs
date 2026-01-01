@@ -17,6 +17,7 @@ pub struct EffectsPlugin;
 impl Plugin for EffectsPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ScreenShake>()
+            .init_resource::<ScreenFlash>()
             .add_systems(OnEnter(GameState::Playing), spawn_starfield)
             .add_systems(
                 Update,
@@ -24,9 +25,11 @@ impl Plugin for EffectsPlugin {
                     update_starfield,
                     update_explosions,
                     update_screen_shake,
+                    update_screen_flash,
                     handle_explosion_events,
                     spawn_engine_trails,
                     update_engine_particles,
+                    update_hit_flash,
                 )
                     .run_if(in_state(GameState::Playing)),
             )
@@ -299,6 +302,158 @@ fn update_screen_shake(
 }
 
 // =============================================================================
+// HIT FLASH
+// =============================================================================
+
+/// Component that makes a sprite flash white when damaged
+#[derive(Component)]
+pub struct HitFlash {
+    /// Time remaining for flash effect
+    pub timer: f32,
+    /// Total duration of flash
+    pub duration: f32,
+    /// Original sprite color (to restore after flash)
+    pub original_color: Color,
+}
+
+impl HitFlash {
+    /// Create a new hit flash effect
+    pub fn new(original_color: Color) -> Self {
+        Self {
+            timer: 0.1,
+            duration: 0.1,
+            original_color,
+        }
+    }
+
+    /// Create a hit flash with custom duration
+    pub fn with_duration(original_color: Color, duration: f32) -> Self {
+        Self {
+            timer: duration,
+            duration,
+            original_color,
+        }
+    }
+}
+
+/// Update hit flash effects on sprites
+fn update_hit_flash(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Sprite, &mut HitFlash)>,
+) {
+    let dt = time.delta_secs();
+
+    for (entity, mut sprite, mut flash) in query.iter_mut() {
+        flash.timer -= dt;
+
+        if flash.timer > 0.0 {
+            // Lerp from white to original color
+            let progress = 1.0 - (flash.timer / flash.duration);
+            let white = Color::WHITE;
+            let original = flash.original_color;
+
+            // Simple lerp between white and original
+            let r = white.to_srgba().red * (1.0 - progress)
+                + original.to_srgba().red * progress;
+            let g = white.to_srgba().green * (1.0 - progress)
+                + original.to_srgba().green * progress;
+            let b = white.to_srgba().blue * (1.0 - progress)
+                + original.to_srgba().blue * progress;
+            let a = original.to_srgba().alpha;
+
+            sprite.color = Color::srgba(r, g, b, a);
+        } else {
+            // Flash complete, restore original and remove component
+            sprite.color = flash.original_color;
+            commands.entity(entity).remove::<HitFlash>();
+        }
+    }
+}
+
+// =============================================================================
+// SCREEN FLASH
+// =============================================================================
+
+/// Screen-wide flash effect for big explosions
+#[derive(Resource, Default)]
+pub struct ScreenFlash {
+    /// Current flash intensity (0.0 - 1.0)
+    pub intensity: f32,
+    /// Flash color
+    pub color: Color,
+    /// Fade speed
+    pub fade_speed: f32,
+}
+
+impl ScreenFlash {
+    /// Trigger a white screen flash
+    pub fn white(&mut self, intensity: f32) {
+        self.intensity = intensity.min(1.0);
+        self.color = Color::WHITE;
+        self.fade_speed = 4.0;
+    }
+
+    /// Trigger a colored screen flash
+    pub fn colored(&mut self, color: Color, intensity: f32) {
+        self.intensity = intensity.min(1.0);
+        self.color = color;
+        self.fade_speed = 4.0;
+    }
+
+    /// Trigger flash for massive explosion (boss kill)
+    pub fn massive(&mut self) {
+        self.white(0.8);
+        self.fade_speed = 2.0; // Slower fade for dramatic effect
+    }
+
+    /// Trigger flash for large explosion
+    pub fn large(&mut self) {
+        self.white(0.5);
+    }
+}
+
+/// Marker component for screen flash overlay sprite
+#[derive(Component)]
+pub struct ScreenFlashOverlay;
+
+/// Update screen flash effect
+fn update_screen_flash(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut flash: ResMut<ScreenFlash>,
+    mut overlay_query: Query<(Entity, &mut Sprite), With<ScreenFlashOverlay>>,
+) {
+    let dt = time.delta_secs();
+
+    if flash.intensity > 0.0 {
+        // Fade out
+        flash.intensity = (flash.intensity - flash.fade_speed * dt).max(0.0);
+
+        // Update or create overlay
+        if let Ok((_, mut sprite)) = overlay_query.get_single_mut() {
+            sprite.color = flash.color.with_alpha(flash.intensity);
+        } else if flash.intensity > 0.01 {
+            // Spawn overlay sprite covering screen
+            commands.spawn((
+                ScreenFlashOverlay,
+                Sprite {
+                    color: flash.color.with_alpha(flash.intensity),
+                    custom_size: Some(Vec2::new(SCREEN_WIDTH + 100.0, SCREEN_HEIGHT + 100.0)),
+                    ..default()
+                },
+                Transform::from_xyz(0.0, 0.0, LAYER_HUD + 10.0), // Above everything
+            ));
+        }
+    } else {
+        // Remove overlay when done
+        for (entity, _) in overlay_query.iter() {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+// =============================================================================
 // ENGINE TRAILS
 // =============================================================================
 
@@ -487,6 +642,7 @@ fn cleanup_effects(
     stars: Query<Entity, With<Star>>,
     explosion_particles: Query<Entity, With<ExplosionParticle>>,
     engine_particles: Query<Entity, With<EngineParticle>>,
+    flash_overlays: Query<Entity, With<ScreenFlashOverlay>>,
 ) {
     for entity in stars.iter() {
         commands.entity(entity).despawn();
@@ -495,6 +651,9 @@ fn cleanup_effects(
         commands.entity(entity).despawn();
     }
     for entity in engine_particles.iter() {
+        commands.entity(entity).despawn();
+    }
+    for entity in flash_overlays.iter() {
         commands.entity(entity).despawn();
     }
 }

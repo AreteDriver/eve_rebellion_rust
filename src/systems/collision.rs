@@ -111,13 +111,14 @@ fn player_projectile_enemy_collision(
     mut commands: Commands,
     grid: Res<SpatialGrid>,
     projectile_query: Query<(Entity, &Transform, &ProjectileDamage), With<PlayerProjectile>>,
-    mut enemy_query: Query<&mut EnemyStats, With<Enemy>>,
+    mut enemy_query: Query<(&mut EnemyStats, Option<&Sprite>), With<Enemy>>,
     player_query: Query<(&Transform, &ShipStats), With<Player>>,
     mut score: ResMut<ScoreSystem>,
     mut berserk: ResMut<BerserkSystem>,
     mut destroy_events: EventWriter<EnemyDestroyedEvent>,
     mut explosion_events: EventWriter<ExplosionEvent>,
     mut screen_shake: ResMut<super::effects::ScreenShake>,
+    mut screen_flash: ResMut<super::effects::ScreenFlash>,
     icon_cache: Res<crate::assets::PowerupIconCache>,
 ) {
     // Get player position and health for proximity check and smart powerups
@@ -144,12 +145,20 @@ fn player_projectile_enemy_collision(
             // Use squared distance to avoid sqrt
             if dist_sq < COLLISION_RADIUS_SQ {
                 // Get mutable enemy stats
-                let Ok(mut enemy_stats) = enemy_query.get_mut(enemy_entity) else {
+                let Ok((mut enemy_stats, sprite)) = enemy_query.get_mut(enemy_entity) else {
                     continue;
                 };
 
                 // Apply damage
                 enemy_stats.health -= proj_damage.damage;
+
+                // Add hit flash effect (white flash when damaged)
+                let original_color = sprite
+                    .map(|s| s.color)
+                    .unwrap_or(Color::WHITE);
+                commands.entity(enemy_entity).insert(
+                    super::effects::HitFlash::new(original_color)
+                );
 
                 // Despawn projectile
                 commands.entity(proj_entity).despawn_recursive();
@@ -190,9 +199,10 @@ fn player_projectile_enemy_collision(
                         color: Color::srgb(1.0, 0.5, 0.2),
                     });
 
-                    // Screen shake on kill
+                    // Screen shake and flash on kill
                     if enemy_stats.is_boss {
                         screen_shake.massive();
+                        screen_flash.massive(); // Big white flash for boss kills
                     } else {
                         screen_shake.trigger(3.0, 0.1); // Small shake for regular enemies
                     }
@@ -227,11 +237,13 @@ fn enemy_projectile_player_collision(
     projectile_query: Query<(Entity, &Transform, &ProjectileDamage), With<EnemyProjectile>>,
     mut player_query: Query<
         (
+            Entity,
             &Transform,
             &mut ShipStats,
             &Hitbox,
             &PowerupEffects,
             &super::ManeuverState,
+            Option<&Sprite>,
         ),
         With<Player>,
     >,
@@ -240,7 +252,7 @@ fn enemy_projectile_player_collision(
     mut screen_shake: ResMut<super::effects::ScreenShake>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    let Ok((player_transform, mut player_stats, hitbox, powerups, maneuver)) =
+    let Ok((player_entity, player_transform, mut player_stats, hitbox, powerups, maneuver, sprite)) =
         player_query.get_single_mut()
     else {
         return;
@@ -264,6 +276,12 @@ fn enemy_projectile_player_collision(
 
             // Apply damage
             let destroyed = player_stats.take_damage(proj_damage.damage, proj_damage.damage_type);
+
+            // Add hit flash effect to player (red-white flash when hit)
+            let original_color = sprite.map(|s| s.color).unwrap_or(Color::WHITE);
+            commands.entity(player_entity).insert(
+                super::effects::HitFlash::with_duration(original_color, 0.15)
+            );
 
             // Lost no-damage bonus
             score.no_damage_bonus = false;
