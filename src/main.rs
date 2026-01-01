@@ -20,7 +20,7 @@ mod ui;
 use assets::AssetsPlugin;
 use core::{
     ActCompleteEvent, AudioSettings, BerserkSystem, BossSpawnEvent, CampaignState, CurrentStage,
-    Difficulty, GameEventsPlugin, GameProgress, GameSession, GameState, InputConfig,
+    Difficulty, EndlessMode, GameEventsPlugin, GameProgress, GameSession, GameState, InputConfig,
     MissionCompleteEvent, MissionStartEvent, SavePlugin, ScoreSystem, SelectedShip, ShipUnlocks,
     WaveCompleteEvent,
 };
@@ -56,6 +56,7 @@ fn main() {
         .init_resource::<ShipUnlocks>()
         .init_resource::<CampaignState>()
         .init_resource::<GameSession>()
+        .init_resource::<EndlessMode>()
         // Campaign events
         .add_event::<MissionStartEvent>()
         .add_event::<MissionCompleteEvent>()

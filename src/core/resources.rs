@@ -618,6 +618,109 @@ impl DifficultySettings {
     }
 }
 
+// =============================================================================
+// ENDLESS MODE
+// =============================================================================
+
+/// Endless mode state - survive infinite waves with escalating difficulty
+#[derive(Debug, Clone, Resource)]
+pub struct EndlessMode {
+    /// Is endless mode active
+    pub active: bool,
+    /// Current wave in endless mode
+    pub wave: u32,
+    /// Highest wave reached (for high score)
+    pub best_wave: u32,
+    /// Survival time in seconds
+    pub time_survived: f32,
+    /// Best survival time
+    pub best_time: f32,
+    /// Enemies killed in this run
+    pub kills: u32,
+    /// Mini-bosses defeated
+    pub mini_bosses_defeated: u32,
+    /// Difficulty escalation factor (increases over time)
+    pub escalation: f32,
+}
+
+impl Default for EndlessMode {
+    fn default() -> Self {
+        Self {
+            active: false,
+            wave: 0,
+            best_wave: 0,
+            time_survived: 0.0,
+            best_time: 0.0,
+            kills: 0,
+            mini_bosses_defeated: 0,
+            escalation: 1.0,
+        }
+    }
+}
+
+impl EndlessMode {
+    /// Start a new endless mode run
+    pub fn start(&mut self) {
+        self.active = true;
+        self.wave = 0;
+        self.time_survived = 0.0;
+        self.kills = 0;
+        self.mini_bosses_defeated = 0;
+        self.escalation = 1.0;
+    }
+
+    /// End the current run and update best scores
+    pub fn end_run(&mut self) {
+        self.active = false;
+        if self.wave > self.best_wave {
+            self.best_wave = self.wave;
+        }
+        if self.time_survived > self.best_time {
+            self.best_time = self.time_survived;
+        }
+    }
+
+    /// Advance to next wave
+    pub fn next_wave(&mut self) {
+        self.wave += 1;
+        // Escalation increases 5% per wave, capping at 3x
+        self.escalation = (1.0 + self.wave as f32 * 0.05).min(3.0);
+    }
+
+    /// Check if it's time for a mini-boss (every 10 waves)
+    pub fn is_mini_boss_wave(&self) -> bool {
+        self.wave > 0 && self.wave % 10 == 0
+    }
+
+    /// Get enemy count for current wave
+    pub fn wave_enemy_count(&self) -> u32 {
+        let base = 4 + self.wave / 2;
+        (base as f32 * self.escalation).min(25.0) as u32
+    }
+
+    /// Get enemy health multiplier for current wave
+    pub fn enemy_health_mult(&self) -> f32 {
+        self.escalation
+    }
+
+    /// Get enemy damage multiplier for current wave
+    pub fn enemy_damage_mult(&self) -> f32 {
+        (1.0 + self.wave as f32 * 0.02).min(2.5)
+    }
+
+    /// Get enemy speed multiplier for current wave
+    pub fn enemy_speed_mult(&self) -> f32 {
+        (1.0 + self.wave as f32 * 0.01).min(1.5)
+    }
+
+    /// Format survival time as MM:SS
+    pub fn time_display(&self) -> String {
+        let minutes = (self.time_survived / 60.0) as u32;
+        let seconds = (self.time_survived % 60.0) as u32;
+        format!("{:02}:{:02}", minutes, seconds)
+    }
+}
+
 #[cfg(test)]
 #[allow(clippy::field_reassign_with_default)]
 mod tests {

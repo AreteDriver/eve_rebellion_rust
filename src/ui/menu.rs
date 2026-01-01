@@ -501,7 +501,7 @@ fn is_elder_fleet(active_module: Res<ActiveModule>) -> bool {
 
 fn spawn_module_select(mut commands: Commands, mut selection: ResMut<MenuSelection>) {
     selection.index = 0;
-    selection.total = 2; // Elder Fleet, Caldari vs Gallente
+    selection.total = 3; // Elder Fleet, Caldari vs Gallente, Endless
 
     commands
         .spawn((
@@ -561,6 +561,17 @@ fn spawn_module_select(mut commands: Commands, mut selection: ResMut<MenuSelecti
                         "Caldari vs Gallente conflict.\n5 missions of brutal combat.",
                         Color::srgb(0.2, 0.4, 0.7), // Caldari blue
                         "◆",
+                    );
+
+                    // Endless Mode card
+                    spawn_module_card(
+                        row,
+                        2,
+                        "ENDLESS",
+                        "Survival Mode",
+                        "Infinite waves of enemies.\nSurvive as long as you can!",
+                        Color::srgb(0.7, 0.2, 0.2), // Red for danger
+                        "∞",
                     );
                 });
 
@@ -673,6 +684,7 @@ fn module_select_input(
     joystick: Res<JoystickState>,
     mut selection: ResMut<MenuSelection>,
     mut active_module: ResMut<ActiveModule>,
+    mut endless: ResMut<crate::core::EndlessMode>,
     time: Res<Time>,
     mut transitions: EventWriter<TransitionEvent>,
     mut cards: Query<(&MenuItem, &mut BackgroundColor, &mut BorderColor), With<ModuleSelectRoot>>,
@@ -691,10 +703,11 @@ fn module_select_input(
     let colors = [
         Color::srgb(0.8, 0.5, 0.2), // Elder Fleet orange
         Color::srgb(0.2, 0.4, 0.7), // Caldari blue
+        Color::srgb(0.7, 0.2, 0.2), // Endless red
     ];
 
     for (item, mut bg, mut border) in cards.iter_mut() {
-        let color = colors[item.index];
+        let color = colors.get(item.index).copied().unwrap_or(colors[0]);
         let is_selected = item.index == selection.index;
 
         if is_selected {
@@ -712,16 +725,26 @@ fn module_select_input(
             0 => {
                 // Elder Fleet
                 active_module.set_module("elder_fleet");
+                endless.active = false;
                 info!("Selected Elder Fleet campaign");
+                transitions.send(TransitionEvent::to(GameState::FactionSelect));
             }
             1 => {
                 // Caldari vs Gallente
                 active_module.set_module("caldari_gallente");
+                endless.active = false;
                 info!("Selected Caldari vs Gallente campaign");
+                transitions.send(TransitionEvent::to(GameState::FactionSelect));
+            }
+            2 => {
+                // Endless Mode
+                active_module.set_module("elder_fleet"); // Use Elder Fleet enemies
+                endless.active = true;
+                info!("Selected ENDLESS MODE!");
+                transitions.send(TransitionEvent::to(GameState::FactionSelect));
             }
             _ => {}
         }
-        transitions.send(TransitionEvent::to(GameState::FactionSelect));
     }
 
     // Back to main menu
@@ -2047,19 +2070,30 @@ fn spawn_death_screen(
     mut commands: Commands,
     score: Res<ScoreSystem>,
     campaign: Res<CampaignState>,
+    mut endless: ResMut<crate::core::EndlessMode>,
     session: Res<GameSession>,
     save_data: Res<SaveData>,
 ) {
     // Initialize selection resource
     commands.insert_resource(DeathSelection::default());
 
+    // End endless run if active
+    let was_endless = endless.active;
+    if was_endless {
+        endless.end_run();
+    }
+
     // Get high score for comparison
     let high_score =
         save_data.get_high_score(session.player_faction.name(), session.enemy_faction.name());
     let is_new_high = score.score > high_score && score.score > 0;
 
-    // Get mission info
-    let mission_name = campaign.current_mission_name();
+    // Get mission info - different for endless mode
+    let mission_name = if was_endless {
+        format!("Endless Wave {}", endless.wave)
+    } else {
+        campaign.current_mission_name().to_string()
+    };
 
     // Spawn debris field (background sprites)
     let debris_colors = [

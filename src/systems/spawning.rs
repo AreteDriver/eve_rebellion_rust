@@ -164,6 +164,10 @@ pub struct WaveManager {
     pub boss_active: bool,
     /// Stage complete, waiting for next
     pub stage_complete: bool,
+    /// Endless mode active (infinite waves)
+    pub endless_mode: bool,
+    /// Mini-boss spawning (for endless mode)
+    pub mini_boss_active: bool,
 }
 
 impl Default for WaveManager {
@@ -179,6 +183,8 @@ impl Default for WaveManager {
             in_delay: true,
             boss_active: false,
             stage_complete: false,
+            endless_mode: false,
+            mini_boss_active: false,
         }
     }
 }
@@ -194,25 +200,36 @@ pub struct WaveDefinition {
 
 fn reset_wave_manager(
     mut manager: ResMut<WaveManager>,
+    mut endless: ResMut<crate::core::EndlessMode>,
     mut dialogue_system: ResMut<DialogueSystem>,
     mut dialogue_events: EventWriter<DialogueEvent>,
 ) {
+    let is_endless = endless.active;
+
     *manager = WaveManager {
         wave: 0,
         waves_per_stage: 5,
         current_stage: 1,
         in_delay: true,
-        wave_delay: 3.0, // Give time to read briefing
+        wave_delay: if is_endless { 2.0 } else { 3.0 },
         boss_active: false,
         stage_complete: false,
+        endless_mode: is_endless,
+        mini_boss_active: false,
         ..default()
     };
 
-    // Reset dialogue system and trigger stage 1 briefing
+    // Reset dialogue system and trigger briefing
     dialogue_system.reset();
-    dialogue_events.send(DialogueEvent::stage_briefing(1));
 
-    info!("Stage 1 - The Call begins!");
+    if is_endless {
+        // Start endless mode tracking
+        endless.start();
+        info!("ENDLESS MODE - Survive as long as you can!");
+    } else {
+        dialogue_events.send(DialogueEvent::stage_briefing(1));
+        info!("Stage 1 - The Call begins!");
+    }
 }
 
 /// Main wave spawning logic
@@ -220,6 +237,7 @@ fn wave_spawning(
     mut commands: Commands,
     time: Res<Time>,
     mut manager: ResMut<WaveManager>,
+    mut endless: ResMut<crate::core::EndlessMode>,
     mut next_state: ResMut<NextState<GameState>>,
     _stage: Res<CurrentStage>,
     session: Res<crate::core::GameSession>,
@@ -240,9 +258,27 @@ fn wave_spawning(
         .unwrap_or(Vec2::new(0.0, SCREEN_HEIGHT / 2.0 - 100.0));
     let dt = time.delta_secs();
 
-    // Handle boss defeated - progress to next stage
+    // Update endless mode timer
+    if manager.endless_mode && endless.active {
+        endless.time_survived += dt;
+    }
+
+    // Handle boss defeated - progress to next stage (or continue endless)
     for event in boss_defeated_events.read() {
         manager.boss_active = false;
+
+        // ENDLESS MODE: Mini-boss defeated, continue waves
+        if manager.endless_mode {
+            manager.mini_boss_active = false;
+            endless.mini_bosses_defeated += 1;
+            manager.wave_delay = 2.0;
+            manager.in_delay = true;
+            info!("ENDLESS: Mini-boss {} defeated! {} total",
+                event.boss_name, endless.mini_bosses_defeated);
+            continue;
+        }
+
+        // CAMPAIGN MODE: Stage complete
         manager.stage_complete = true;
         manager.wave_delay = 4.0; // Pause before next stage
         manager.in_delay = true;
@@ -297,7 +333,39 @@ fn wave_spawning(
             manager.in_delay = false;
             manager.wave += 1;
 
-            // Check if time for boss
+            // ENDLESS MODE: Infinite waves
+            if manager.endless_mode {
+                endless.next_wave();
+
+                // Check for mini-boss every 10 waves
+                if endless.is_mini_boss_wave() {
+                    manager.mini_boss_active = true;
+                    // Spawn a mini-boss (use stage-based boss with scaled stats)
+                    let mini_boss_stage = ((endless.wave / 10) % 13).max(1);
+                    boss_spawn_events.send(super::boss::BossSpawnEvent {
+                        stage: mini_boss_stage,
+                    });
+                    info!("ENDLESS Wave {} - MINI-BOSS incoming!", endless.wave);
+                    return;
+                }
+
+                // Setup endless wave with escalating difficulty
+                let enemy_count = endless.wave_enemy_count();
+                manager.enemies_remaining = enemy_count;
+                manager.spawn_interval = (0.6 - endless.wave as f32 * 0.01).max(0.2);
+
+                wave_events.send(SpawnWaveEvent {
+                    wave_number: endless.wave,
+                    enemy_count,
+                    enemy_types: vec!["endless".to_string()],
+                });
+
+                info!("ENDLESS Wave {}: {} enemies ({}x escalation)",
+                    endless.wave, enemy_count, endless.escalation);
+                return;
+            }
+
+            // CAMPAIGN MODE: Check if time for boss
             if manager.wave > manager.waves_per_stage {
                 manager.boss_active = true;
                 boss_spawn_events.send(super::boss::BossSpawnEvent {
