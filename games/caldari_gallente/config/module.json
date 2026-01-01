@@ -242,8 +242,14 @@
       "name": "FINAL DIRECTIVE: SHIIGERU",
       "description": "The Caldari titan Shiigeru falls. An endless nightmare aboard the dying vessel.",
       "type": "endless",
-      "status": "TODO",
-      "notes": "Implement as endless survival mode aboard the burning titan as it plummets toward Caldari Prime."
+      "status": "IMPLEMENTED",
+      "features": [
+        "Escalating wave spawns (faster over time)",
+        "Mini-boss types: Security Chief, Weapons Officer, Drone Swarm, Bridge Commander",
+        "Enemy health/damage scales with escalation",
+        "Hull integrity visual (decreases over time)",
+        "High score tracking (best wave, best time)"
+      ]
     }
   },
 

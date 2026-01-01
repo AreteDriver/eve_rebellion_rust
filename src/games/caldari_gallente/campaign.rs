@@ -117,8 +117,7 @@ pub const CG_MISSIONS: [CGMission; 5] = [
     },
 ];
 
-/// Epilogue mission stub (Caldari arc only)
-/// TODO: Implement endless nightmare endurance mission
+/// Epilogue mission - Shiigeru Endless Nightmare
 pub const CG_EPILOGUE_SHIIGERU: CGMission = CGMission {
     id: "cg_epilogue_shiigeru",
     name: "FINAL DIRECTIVE: SHIIGERU",
@@ -130,6 +129,221 @@ pub const CG_EPILOGUE_SHIIGERU: CGMission = CGMission {
     is_tutorial: false,
     unlocks_t3: false,
 };
+
+// ============================================================================
+// Shiigeru Nightmare Mode - Endless Survival
+// ============================================================================
+
+/// Mini-boss types that spawn during the Shiigeru nightmare
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NightmareBoss {
+    /// Security chief - fast, aggressive
+    SecurityChief,
+    /// Weapons officer - heavy firepower
+    WeaponsOfficer,
+    /// Drone swarm from the hangar bay
+    DroneSwarm,
+    /// Bridge commander - final spawns only
+    BridgeCommander,
+}
+
+impl NightmareBoss {
+    pub fn name(&self) -> &'static str {
+        match self {
+            NightmareBoss::SecurityChief => "SECURITY CHIEF",
+            NightmareBoss::WeaponsOfficer => "WEAPONS OFFICER",
+            NightmareBoss::DroneSwarm => "DRONE SWARM",
+            NightmareBoss::BridgeCommander => "BRIDGE COMMANDER",
+        }
+    }
+
+    pub fn health(&self) -> f32 {
+        match self {
+            NightmareBoss::SecurityChief => 300.0,
+            NightmareBoss::WeaponsOfficer => 400.0,
+            NightmareBoss::DroneSwarm => 200.0, // Multiple targets
+            NightmareBoss::BridgeCommander => 600.0,
+        }
+    }
+
+    pub fn dialogue(&self) -> &'static str {
+        match self {
+            NightmareBoss::SecurityChief => "All hands, repel boarders! This is not a drill!",
+            NightmareBoss::WeaponsOfficer => "Weapons hot! Target that intruder!",
+            NightmareBoss::DroneSwarm => "Launching automated defense drones!",
+            NightmareBoss::BridgeCommander => "You won't take this ship while I breathe!",
+        }
+    }
+
+    /// Get a boss type appropriate for the current wave
+    pub fn for_wave(wave: u32) -> Self {
+        match wave % 4 {
+            0 => NightmareBoss::DroneSwarm,
+            1 => NightmareBoss::SecurityChief,
+            2 => NightmareBoss::WeaponsOfficer,
+            _ => {
+                if wave >= 20 {
+                    NightmareBoss::BridgeCommander
+                } else {
+                    NightmareBoss::SecurityChief
+                }
+            }
+        }
+    }
+}
+
+/// Shiigeru Nightmare endless mode state
+#[derive(Resource, Debug, Clone)]
+pub struct ShiigeruNightmare {
+    /// Is nightmare mode active
+    pub active: bool,
+    /// Current wave number
+    pub wave: u32,
+    /// Time survived in seconds
+    pub time_survived: f32,
+    /// Best time (for high score)
+    pub best_time: f32,
+    /// Best wave reached
+    pub best_wave: u32,
+    /// Total enemies killed this run
+    pub kills: u32,
+    /// Mini-bosses defeated this run
+    pub mini_bosses_defeated: u32,
+    /// Time until next wave spawns
+    pub wave_timer: f32,
+    /// Time between waves (decreases with escalation)
+    pub wave_interval: f32,
+    /// Escalation multiplier (enemy health/damage scale)
+    pub escalation: f32,
+    /// Time until next mini-boss
+    pub boss_timer: f32,
+    /// Current mini-boss (if spawned)
+    pub current_boss: Option<NightmareBoss>,
+    /// Hull integrity (0-100, visual effect only)
+    pub hull_integrity: f32,
+}
+
+impl Default for ShiigeruNightmare {
+    fn default() -> Self {
+        Self {
+            active: false,
+            wave: 0,
+            time_survived: 0.0,
+            best_time: 0.0,
+            best_wave: 0,
+            kills: 0,
+            mini_bosses_defeated: 0,
+            wave_timer: 0.0,
+            wave_interval: 8.0, // 8 seconds between waves initially
+            escalation: 1.0,
+            boss_timer: 30.0, // First mini-boss after 30 seconds
+            current_boss: None,
+            hull_integrity: 100.0,
+        }
+    }
+}
+
+impl ShiigeruNightmare {
+    /// Start a new nightmare run
+    pub fn start(&mut self) {
+        self.active = true;
+        self.wave = 0;
+        self.time_survived = 0.0;
+        self.kills = 0;
+        self.mini_bosses_defeated = 0;
+        self.wave_timer = 3.0; // First wave after 3 seconds
+        self.wave_interval = 8.0;
+        self.escalation = 1.0;
+        self.boss_timer = 30.0;
+        self.current_boss = None;
+        self.hull_integrity = 100.0;
+    }
+
+    /// End the nightmare run (player died)
+    pub fn end(&mut self) {
+        self.active = false;
+
+        // Update high scores
+        if self.time_survived > self.best_time {
+            self.best_time = self.time_survived;
+        }
+        if self.wave > self.best_wave {
+            self.best_wave = self.wave;
+        }
+    }
+
+    /// Update timers and escalation
+    pub fn update(&mut self, dt: f32) -> NightmareEvent {
+        if !self.active {
+            return NightmareEvent::None;
+        }
+
+        self.time_survived += dt;
+        self.wave_timer -= dt;
+        self.boss_timer -= dt;
+
+        // Hull integrity slowly decreases (visual tension)
+        self.hull_integrity = (self.hull_integrity - dt * 0.5).max(10.0);
+
+        // Escalation increases over time
+        self.escalation = 1.0 + (self.time_survived / 60.0) * 0.25; // +25% per minute
+
+        // Wave interval decreases with escalation (faster spawns)
+        self.wave_interval = (8.0 - self.escalation * 0.5).max(3.0);
+
+        // Check for mini-boss spawn
+        if self.boss_timer <= 0.0 && self.current_boss.is_none() {
+            self.boss_timer = 45.0 - (self.escalation * 5.0).min(20.0); // Faster boss spawns later
+            let boss = NightmareBoss::for_wave(self.wave);
+            self.current_boss = Some(boss);
+            return NightmareEvent::SpawnBoss(boss);
+        }
+
+        // Check for wave spawn
+        if self.wave_timer <= 0.0 {
+            self.wave += 1;
+            self.wave_timer = self.wave_interval;
+            return NightmareEvent::SpawnWave(self.wave);
+        }
+
+        NightmareEvent::None
+    }
+
+    /// Called when an enemy is killed
+    pub fn on_kill(&mut self) {
+        self.kills += 1;
+    }
+
+    /// Called when a mini-boss is defeated
+    pub fn on_boss_defeated(&mut self) {
+        self.mini_bosses_defeated += 1;
+        self.current_boss = None;
+    }
+
+    /// Get enemies per wave based on current escalation
+    pub fn enemies_per_wave(&self) -> u32 {
+        let base = 4 + (self.wave / 3);
+        ((base as f32) * self.escalation.sqrt()) as u32
+    }
+
+    /// Get enemy health multiplier
+    pub fn enemy_health_mult(&self) -> f32 {
+        self.escalation
+    }
+
+    /// Get enemy damage multiplier
+    pub fn enemy_damage_mult(&self) -> f32 {
+        1.0 + (self.escalation - 1.0) * 0.5 // Damage scales slower than health
+    }
+}
+
+/// Events that the nightmare mode can trigger
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NightmareEvent {
+    None,
+    SpawnWave(u32),
+    SpawnBoss(NightmareBoss),
+}
 
 /// Campaign state for Caldari/Gallente module
 #[derive(Debug, Clone, Resource, Default)]
@@ -190,5 +404,134 @@ impl CGCampaignState {
         } else {
             false
         }
+    }
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nightmare_starts_correctly() {
+        let mut nightmare = ShiigeruNightmare::default();
+        assert!(!nightmare.active);
+
+        nightmare.start();
+        assert!(nightmare.active);
+        assert_eq!(nightmare.wave, 0);
+        assert_eq!(nightmare.kills, 0);
+        assert_eq!(nightmare.escalation, 1.0);
+    }
+
+    #[test]
+    fn nightmare_escalation_increases() {
+        let mut nightmare = ShiigeruNightmare::default();
+        nightmare.start();
+
+        // Simulate 60 seconds
+        for _ in 0..60 {
+            nightmare.update(1.0);
+        }
+
+        // Should have escalated by ~25%
+        assert!(nightmare.escalation > 1.2);
+        assert!(nightmare.escalation < 1.3);
+    }
+
+    #[test]
+    fn nightmare_spawns_waves() {
+        let mut nightmare = ShiigeruNightmare::default();
+        nightmare.start();
+
+        // First wave spawns after 3 seconds
+        let event = nightmare.update(3.5);
+        assert_eq!(event, NightmareEvent::SpawnWave(1));
+        assert_eq!(nightmare.wave, 1);
+    }
+
+    #[test]
+    fn nightmare_spawns_boss() {
+        let mut nightmare = ShiigeruNightmare::default();
+        nightmare.start();
+
+        // Boss spawns after 30 seconds
+        nightmare.update(31.0);
+
+        // Check that boss was spawned
+        assert!(nightmare.current_boss.is_some());
+    }
+
+    #[test]
+    fn nightmare_tracks_kills() {
+        let mut nightmare = ShiigeruNightmare::default();
+        nightmare.start();
+
+        nightmare.on_kill();
+        nightmare.on_kill();
+        nightmare.on_kill();
+
+        assert_eq!(nightmare.kills, 3);
+    }
+
+    #[test]
+    fn nightmare_tracks_boss_defeats() {
+        let mut nightmare = ShiigeruNightmare::default();
+        nightmare.start();
+        nightmare.current_boss = Some(NightmareBoss::SecurityChief);
+
+        nightmare.on_boss_defeated();
+
+        assert_eq!(nightmare.mini_bosses_defeated, 1);
+        assert!(nightmare.current_boss.is_none());
+    }
+
+    #[test]
+    fn nightmare_updates_high_scores() {
+        let mut nightmare = ShiigeruNightmare::default();
+        nightmare.start();
+
+        // Simulate a run
+        nightmare.wave = 15;
+        nightmare.time_survived = 120.0;
+
+        nightmare.end();
+
+        assert_eq!(nightmare.best_wave, 15);
+        assert_eq!(nightmare.best_time, 120.0);
+
+        // Start another run
+        nightmare.start();
+        nightmare.wave = 10;
+        nightmare.time_survived = 60.0;
+        nightmare.end();
+
+        // Best scores should remain
+        assert_eq!(nightmare.best_wave, 15);
+        assert_eq!(nightmare.best_time, 120.0);
+    }
+
+    #[test]
+    fn nightmare_boss_for_wave() {
+        assert_eq!(NightmareBoss::for_wave(1), NightmareBoss::SecurityChief);
+        assert_eq!(NightmareBoss::for_wave(2), NightmareBoss::WeaponsOfficer);
+        assert_eq!(NightmareBoss::for_wave(4), NightmareBoss::DroneSwarm);
+        assert_eq!(NightmareBoss::for_wave(23), NightmareBoss::BridgeCommander);
+    }
+
+    #[test]
+    fn nightmare_enemies_per_wave_scales() {
+        let mut nightmare = ShiigeruNightmare::default();
+        nightmare.start();
+
+        let wave1_enemies = nightmare.enemies_per_wave();
+        nightmare.wave = 10;
+        nightmare.escalation = 1.5;
+        let wave10_enemies = nightmare.enemies_per_wave();
+
+        assert!(wave10_enemies > wave1_enemies);
     }
 }

@@ -55,10 +55,25 @@ Your chosen faction determines:
 4. **Escalation Point** - T3 destroyers enter (unlocks T3)
 5. **Decisive Push** - Final battle for superiority
 
-## Epilogue (TODO)
+## Epilogue: Shiigeru Nightmare
 
-An epilogue mission is stubbed for the Caldari arc:
-- **"Final Directive: Shiigeru"** - Endless survival aboard the dying Caldari titan as it falls toward Caldari Prime
+The Caldari arc includes an endless survival epilogue:
+
+**"Final Directive: Shiigeru"** - Endless survival aboard the dying Leviathan-class titan as it plummets toward Caldari Prime.
+
+### Mechanics
+- **Escalating Difficulty**: Waves spawn faster over time, enemies get stronger
+- **Mini-Bosses**: Security Chief, Weapons Officer, Drone Swarm, Bridge Commander
+- **Hull Integrity**: Visual tension element that decreases over time
+- **High Scores**: Track best wave reached and survival time
+
+### Mini-Boss Rotation
+| Wave Pattern | Boss Type | Health |
+|--------------|-----------|--------|
+| Every 4th wave | Drone Swarm | 200 |
+| Wave % 4 = 1 | Security Chief | 300 |
+| Wave % 4 = 2 | Weapons Officer | 400 |
+| Wave 20+ | Bridge Commander | 600 |
 
 ## Directory Structure
 
