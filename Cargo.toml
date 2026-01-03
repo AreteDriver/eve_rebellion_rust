@@ -1,6 +1,6 @@
 [package]
 name = "eve_rebellion"
-version = "1.4.2"
+version = "1.5.0"
 edition = "2021"
 authors = ["ARETE"]
 description = "EVE Online arcade shooter suite - Rust/Bevy rewrite"
