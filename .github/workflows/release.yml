@@ -209,24 +209,20 @@ jobs:
           mkdir windows-extracted
           unzip windows/*.zip -d windows-extracted
 
-      - name: Install butler
-        run: |
-          curl -L -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
-          unzip butler.zip
-          chmod +x butler
-          ./butler -V
+      - name: Setup butler
+        uses: jdno/setup-butler@v1
 
       - name: Push to itch.io (Linux)
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: ./butler push linux-extracted aretedriver/eve-rebellion:linux --userversion ${{ github.ref_name }}
+        run: butler push linux-extracted aretedriver/eve-rebellion:linux --userversion ${{ github.ref_name }}
 
       - name: Push to itch.io (Windows)
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: ./butler push windows-extracted aretedriver/eve-rebellion:windows --userversion ${{ github.ref_name }}
+        run: butler push windows-extracted aretedriver/eve-rebellion:windows --userversion ${{ github.ref_name }}
 
       - name: Push to itch.io (Web)
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: ./butler push web aretedriver/eve-rebellion:html5 --userversion ${{ github.ref_name }}
+        run: butler push web aretedriver/eve-rebellion:html5 --userversion ${{ github.ref_name }}
