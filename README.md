@@ -2,9 +2,10 @@
 
 [![CI](https://github.com/AreteDriver/eve_rebellion_rust/actions/workflows/ci.yml/badge.svg)](https://github.com/AreteDriver/eve_rebellion_rust/actions)
 [![Release](https://img.shields.io/github/v/release/AreteDriver/eve_rebellion_rust)](https://github.com/AreteDriver/eve_rebellion_rust/releases)
-[![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
+[![Play on itch.io](https://img.shields.io/badge/Play-itch.io-FA5C5C?logo=itch.io)](https://aretedriver.itch.io/eve-rebellion)
+[![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Web-purple.svg)]()
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows%20%7C%20Web-purple.svg)]()
 
 **EVE Rebellion** puts you in the cockpit during the Minmatar's greatest hour - the Elder Fleet invasion of YC110. Rise from a rookie pilot in a rusty Rifter to an ace liberator in a Jaguar, freeing your people from centuries of Amarr slavery.
 
