@@ -1,1 +1,6 @@
 /target
+/dist
+/web/*.js
+/web/*.wasm
+/web/*.d.ts
+/web/assets
