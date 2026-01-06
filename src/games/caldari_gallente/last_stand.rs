@@ -19,13 +19,25 @@ pub const EVACUATION_MILESTONES: [(u32, &str); 10] = [
     (10, "First transports away. The State remembers you."),
     (20, "Twenty percent evacuated. Hold the line!"),
     (30, "Shields critical. Reroute auxiliary power."),
-    (40, "Federation dreadnoughts inbound. All batteries, fire at will!"),
+    (
+        40,
+        "Federation dreadnoughts inbound. All batteries, fire at will!",
+    ),
     (50, "Halfway there. The Megas approaches."),
-    (60, "Structural integrity failing. This ship will not surrender!"),
+    (
+        60,
+        "Structural integrity failing. This ship will not surrender!",
+    ),
     (70, "Most civilians are clear. We can do this."),
-    (80, "Admiral: 'Set collision course. The Federation will remember this day.'"),
+    (
+        80,
+        "Admiral: 'Set collision course. The Federation will remember this day.'",
+    ),
     (90, "Final transports launching. Prepare for descent."),
-    (100, "Evacuation complete. CNS Kairiola, you served the State well."),
+    (
+        100,
+        "Evacuation complete. CNS Kairiola, you served the State well.",
+    ),
 ];
 
 /// Control bindings for Last Stand mode

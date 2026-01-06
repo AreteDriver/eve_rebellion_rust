@@ -96,15 +96,15 @@ impl AbilityType {
     pub fn duration(&self) -> f32 {
         match self {
             AbilityType::Overdrive => 3.0,
-            AbilityType::Afterburner => 1.5, // Short dash
+            AbilityType::Afterburner => 1.5,   // Short dash
             AbilityType::RocketBarrage => 0.0, // Instant burst
             AbilityType::Scorch => 5.0,
             AbilityType::ArmorHardener => 4.0,
             AbilityType::DeployDrone => 15.0, // Drone lifetime
-            AbilityType::Salvo => 0.0, // Instant burst
-            AbilityType::ShieldBoost => 0.0, // Instant heal
+            AbilityType::Salvo => 0.0,        // Instant burst
+            AbilityType::ShieldBoost => 0.0,  // Instant heal
             AbilityType::WarpDisruptor => 3.0,
-            AbilityType::DroneBay => 20.0, // Drone lifetime
+            AbilityType::DroneBay => 20.0,   // Drone lifetime
             AbilityType::ArmorRepair => 5.0, // HoT duration
             AbilityType::CloseRange => 4.0,
             AbilityType::None => 0.0,
@@ -205,6 +205,7 @@ pub struct AbilityActivatedEvent {
 
 /// Event: Ability effect ended
 #[derive(Event)]
+#[allow(dead_code)]
 pub struct AbilityEndedEvent {
     pub ability_type: AbilityType,
     pub player_entity: Entity,
@@ -366,7 +367,7 @@ fn ability_apply_effects(
 
         // Apply speed effect to movement
         if effects.speed_multiplier != 1.0 {
-            movement.max_speed = movement.max_speed * effects.speed_multiplier;
+            movement.max_speed *= effects.speed_multiplier;
         }
     }
 }

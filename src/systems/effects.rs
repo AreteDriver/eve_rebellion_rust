@@ -1158,7 +1158,11 @@ fn spawn_armor_effect(commands: &mut Commands, position: Vec2) {
                 custom_size: Some(Vec2::new(5.0, 5.0)),
                 ..default()
             },
-            Transform::from_xyz(position.x + offset.x, position.y + offset.y, LAYER_EFFECTS + 1.0),
+            Transform::from_xyz(
+                position.x + offset.x,
+                position.y + offset.y,
+                LAYER_EFFECTS + 1.0,
+            ),
         ));
     }
 }
@@ -1285,7 +1289,12 @@ fn spawn_damage_aura_effect(commands: &mut Commands, position: Vec2) {
 fn update_ability_effects(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut Transform, &mut AbilityEffectParticle, &mut Sprite)>,
+    mut query: Query<(
+        Entity,
+        &mut Transform,
+        &mut AbilityEffectParticle,
+        &mut Sprite,
+    )>,
 ) {
     let dt = time.delta_secs();
 

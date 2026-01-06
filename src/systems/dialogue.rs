@@ -416,12 +416,18 @@ fn get_cg_stage_briefing(stage: u32) -> String {
 /// CG act complete dialogue
 fn get_cg_act_complete(act: u32) -> String {
     match act {
-        1 => "Orbital perimeter secured. Enemy probing attacks repelled. But this was just the \
-              opening salvo. They'll be back in force.",
-        2 => "Enemy reinforcement lines severed. Their fleet is isolated. Now we push for total \
-              orbital control.",
-        3 => "Victory! Orbital superiority achieved. Caldari Prime is secure. The enemy fleet \
-              is in full retreat. Outstanding work, pilot.",
+        1 => {
+            "Orbital perimeter secured. Enemy probing attacks repelled. But this was just the \
+              opening salvo. They'll be back in force."
+        }
+        2 => {
+            "Enemy reinforcement lines severed. Their fleet is isolated. Now we push for total \
+              orbital control."
+        }
+        3 => {
+            "Victory! Orbital superiority achieved. Caldari Prime is secure. The enemy fleet \
+              is in full retreat. Outstanding work, pilot."
+        }
         _ => "Mission phase complete. Stand by for further orders.",
     }
     .to_string()

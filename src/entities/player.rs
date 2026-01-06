@@ -294,10 +294,16 @@ fn spawn_player(
     last_stand: Option<Res<crate::games::caldari_gallente::LastStandState>>,
 ) {
     // Skip player spawn in Last Stand mode (titan is spawned instead)
-    if let Some(ls) = &last_stand {
-        if ls.active {
-            info!("Skipping player spawn - Last Stand mode active");
-            return;
+    match &last_stand {
+        Some(ls) => {
+            info!("spawn_player: LastStandState exists, active={}", ls.active);
+            if ls.active {
+                info!("Skipping player spawn - Last Stand mode active");
+                return;
+            }
+        }
+        None => {
+            info!("spawn_player: LastStandState resource not found");
         }
     }
 
@@ -359,11 +365,7 @@ fn spawn_player(
     // Create ability from ship definition
     let ability_type = AbilityType::from_special(ship_def.special);
 
-    info!(
-        "Ship ability: {:?} ({})",
-        ability_type,
-        ability_type.name()
-    );
+    info!("Ship ability: {:?} ({})", ability_type, ability_type.name());
 
     // Use sprites (2D camera compatible)
     if let Some(texture) = sprite_cache.get(type_id) {

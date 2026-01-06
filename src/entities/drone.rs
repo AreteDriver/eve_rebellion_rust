@@ -71,7 +71,7 @@ impl Default for DroneWeapon {
 /// Drone faction for visual styling
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DroneFaction {
-    Amarr,   // Gold/yellow drones
+    Amarr,    // Gold/yellow drones
     Gallente, // Green drones
 }
 
@@ -120,13 +120,7 @@ fn spawn_drones_on_ability(
             }
             AbilityType::DroneBay => {
                 // Two Gallente autonomous fighters
-                spawn_drone(
-                    &mut commands,
-                    player_pos,
-                    0.0,
-                    DroneFaction::Gallente,
-                    20.0,
-                );
+                spawn_drone(&mut commands, player_pos, 0.0, DroneFaction::Gallente, 20.0);
                 spawn_drone(
                     &mut commands,
                     player_pos,
@@ -159,15 +153,15 @@ fn spawn_drone(
     let (color, health, damage, fire_rate) = match faction {
         DroneFaction::Amarr => (
             Color::srgb(1.0, 0.85, 0.3), // Gold
-            40.0,                         // Tankier single drone
-            15.0,                         // Higher damage
-            2.5,                          // Slower fire rate
+            40.0,                        // Tankier single drone
+            15.0,                        // Higher damage
+            2.5,                         // Slower fire rate
         ),
         DroneFaction::Gallente => (
             Color::srgb(0.4, 0.9, 0.4), // Green
-            25.0,                        // Lighter fighters
-            10.0,                        // Lower damage per drone
-            4.0,                         // Faster fire rate
+            25.0,                       // Lighter fighters
+            10.0,                       // Lower damage per drone
+            4.0,                        // Faster fire rate
         ),
     };
 
@@ -201,7 +195,10 @@ fn spawn_drone(
 fn drone_orbit_player(
     time: Res<Time>,
     player_query: Query<&Transform, With<super::Player>>,
-    mut drone_query: Query<(&mut Transform, &mut DroneStats), (With<Drone>, Without<super::Player>)>,
+    mut drone_query: Query<
+        (&mut Transform, &mut DroneStats),
+        (With<Drone>, Without<super::Player>),
+    >,
 ) {
     let Ok(player_transform) = player_query.get_single() else {
         return;
@@ -287,7 +284,7 @@ fn drone_target_and_shoot(
 
             // Projectile color based on faction
             let bullet_color = match faction {
-                DroneFaction::Amarr => Color::srgb(1.0, 0.9, 0.4),   // Gold laser
+                DroneFaction::Amarr => Color::srgb(1.0, 0.9, 0.4), // Gold laser
                 DroneFaction::Gallente => Color::srgb(0.5, 1.0, 0.5), // Green plasma
             };
 

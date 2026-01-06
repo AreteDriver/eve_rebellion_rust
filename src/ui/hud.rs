@@ -15,35 +15,36 @@ pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_hud.run_if(not_last_stand))
-            .add_systems(
-                Update,
-                (
-                    update_score_display,
-                    update_berserk_meter,
-                    update_combo_display,
-                    update_heat_display,
-                    update_combo_kills,
-                    update_combo_timer_bar,
-                    update_powerup_indicators,
-                    update_wave_display,
-                    update_mission_display,
-                    update_boss_health_bar,
-                    update_dialogue_display,
-                    update_wingman_gauge,
-                    update_ability_indicator,
-                )
-                    .run_if(in_state(GameState::Playing))
-                    .run_if(not_last_stand),
+        app.add_systems(
+            OnEnter(GameState::Playing),
+            spawn_hud.run_if(not_last_stand),
+        )
+        .add_systems(
+            Update,
+            (
+                update_score_display,
+                update_berserk_meter,
+                update_combo_display,
+                update_heat_display,
+                update_combo_kills,
+                update_combo_timer_bar,
+                update_powerup_indicators,
+                update_wave_display,
+                update_mission_display,
+                update_boss_health_bar,
+                update_dialogue_display,
+                update_wingman_gauge,
+                update_ability_indicator,
             )
-            .add_systems(OnExit(GameState::Playing), despawn_hud);
+                .run_if(in_state(GameState::Playing))
+                .run_if(not_last_stand),
+        )
+        .add_systems(OnExit(GameState::Playing), despawn_hud);
     }
 }
 
 /// Run condition: NOT in Last Stand mode
-fn not_last_stand(
-    last_stand: Option<Res<crate::games::caldari_gallente::LastStandState>>,
-) -> bool {
+fn not_last_stand(last_stand: Option<Res<crate::games::caldari_gallente::LastStandState>>) -> bool {
     match last_stand {
         Some(ls) => !ls.active,
         None => true,
@@ -1231,7 +1232,10 @@ fn update_ability_indicator(
     mut container_query: Query<&mut Node, With<AbilityIndicatorContainer>>,
     mut fill_query: Query<
         (&mut Node, &mut BackgroundColor),
-        (With<AbilityIndicatorFill>, Without<AbilityIndicatorContainer>),
+        (
+            With<AbilityIndicatorFill>,
+            Without<AbilityIndicatorContainer>,
+        ),
     >,
     mut text_query: Query<&mut Text, With<AbilityIndicatorText>>,
 ) {

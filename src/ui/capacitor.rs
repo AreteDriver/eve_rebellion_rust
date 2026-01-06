@@ -272,12 +272,8 @@ fn draw_capacitor_wheel(
             if heat_pct > 0.85 {
                 // Pulsing red border around the wheel
                 let flash_alpha = ((anim.pulse - 0.9) * 10.0).sin().abs();
-                let flash_color = egui::Color32::from_rgba_unmultiplied(
-                    255,
-                    40,
-                    40,
-                    (flash_alpha * 80.0) as u8,
-                );
+                let flash_color =
+                    egui::Color32::from_rgba_unmultiplied(255, 40, 40, (flash_alpha * 80.0) as u8);
                 painter.circle_stroke(
                     center,
                     wheel_radius + 6.0,
@@ -507,25 +503,25 @@ fn draw_capacitor_rings(
         // Cool - teal/cyan
         let t = heat_pct / 0.3;
         egui::Color32::from_rgb(
-            (60.0 + 140.0 * t) as u8,   // 60 → 200
-            (180.0 - 30.0 * t) as u8,   // 180 → 150
-            (200.0 - 100.0 * t) as u8,  // 200 → 100
+            (60.0 + 140.0 * t) as u8,  // 60 → 200
+            (180.0 - 30.0 * t) as u8,  // 180 → 150
+            (200.0 - 100.0 * t) as u8, // 200 → 100
         )
     } else if heat_pct < 0.6 {
         // Warm - golden/yellow
         let t = (heat_pct - 0.3) / 0.3;
         egui::Color32::from_rgb(
-            (200.0 + 55.0 * t) as u8,  // 200 → 255
-            (150.0 + 30.0 * t) as u8,  // 150 → 180
-            (100.0 - 50.0 * t) as u8,  // 100 → 50
+            (200.0 + 55.0 * t) as u8, // 200 → 255
+            (150.0 + 30.0 * t) as u8, // 150 → 180
+            (100.0 - 50.0 * t) as u8, // 100 → 50
         )
     } else if heat_pct < 0.85 {
         // Hot - orange
         let t = (heat_pct - 0.6) / 0.25;
         egui::Color32::from_rgb(
             255,
-            (180.0 - 80.0 * t) as u8,  // 180 → 100
-            (50.0 - 30.0 * t) as u8,   // 50 → 20
+            (180.0 - 80.0 * t) as u8, // 180 → 100
+            (50.0 - 30.0 * t) as u8,  // 50 → 20
         )
     } else {
         // Critical - red (pulsing)
@@ -564,7 +560,11 @@ fn draw_capacitor_rings(
 
             let fill_color = if is_filled {
                 // Apply subtle pulse to filled gauges
-                let pulse_factor = if heat_pct > 0.85 { pulse } else { 0.95 + 0.05 * pulse };
+                let pulse_factor = if heat_pct > 0.85 {
+                    pulse
+                } else {
+                    0.95 + 0.05 * pulse
+                };
                 egui::Color32::from_rgb(
                     (heat_color.r() as f32 * pulse_factor).min(255.0) as u8,
                     (heat_color.g() as f32 * pulse_factor).min(255.0) as u8,

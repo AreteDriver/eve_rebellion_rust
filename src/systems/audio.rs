@@ -89,13 +89,13 @@ pub struct SoundAssets {
     pub menu_select: Option<Handle<AudioSource>>,
     pub menu_confirm: Option<Handle<AudioSource>>,
     // Ability sounds
-    pub ability_speed: Option<Handle<AudioSource>>,      // Overdrive, Afterburner
-    pub ability_shield: Option<Handle<AudioSource>>,     // Shield Boost
-    pub ability_armor: Option<Handle<AudioSource>>,      // Armor Hardener, Armor Repair
-    pub ability_weapon: Option<Handle<AudioSource>>,     // Salvo, Rocket Barrage, Scorch
-    pub ability_drone: Option<Handle<AudioSource>>,      // Deploy Drone, Drone Bay
-    pub ability_debuff: Option<Handle<AudioSource>>,     // Warp Disruptor
-    pub ability_damage: Option<Handle<AudioSource>>,     // Close Range
+    pub ability_speed: Option<Handle<AudioSource>>, // Overdrive, Afterburner
+    pub ability_shield: Option<Handle<AudioSource>>, // Shield Boost
+    pub ability_armor: Option<Handle<AudioSource>>, // Armor Hardener, Armor Repair
+    pub ability_weapon: Option<Handle<AudioSource>>, // Salvo, Rocket Barrage, Scorch
+    pub ability_drone: Option<Handle<AudioSource>>, // Deploy Drone, Drone Bay
+    pub ability_debuff: Option<Handle<AudioSource>>, // Warp Disruptor
+    pub ability_damage: Option<Handle<AudioSource>>, // Close Range
 }
 
 /// Tracks when warnings should play (to avoid spamming)
@@ -1170,7 +1170,7 @@ fn generate_ability_weapon() -> Option<AudioSource> {
             0.0
         };
 
-        let env = (1.0 - (-t * 40.0).exp());
+        let env = 1.0 - (-t * 40.0).exp();
 
         let sample = ((charge + burst + crackle) * env * 0.6).clamp(-1.0, 1.0);
         samples.push(sample);

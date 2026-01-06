@@ -2504,7 +2504,7 @@ fn spawn_last_stand(mut commands: Commands, last_stand: Res<LastStandState>) {
     commands.spawn((
         LastStandTitan,
         Sprite {
-            color: Color::srgb(0.3, 0.5, 0.8), // Caldari blue
+            color: Color::srgb(0.3, 0.5, 0.8),          // Caldari blue
             custom_size: Some(Vec2::new(200.0, 120.0)), // Large titan shape
             ..default()
         },
@@ -2737,7 +2737,10 @@ fn update_last_stand(
         }
         LastStandEvent::Destroyed => {
             // Death before evacuation complete
-            info!("CNS Kairiola destroyed - Evacuation failed at {}%", last_stand.evacuation_progress as u32);
+            info!(
+                "CNS Kairiola destroyed - Evacuation failed at {}%",
+                last_stand.evacuation_progress as u32
+            );
             next_state.set(GameState::GameOver);
         }
         LastStandEvent::None => {}
@@ -2752,69 +2755,75 @@ fn last_stand_input(
     mut commands: Commands,
 ) {
     // Fighter Launch (RT / F)
-    if keyboard.just_pressed(KeyCode::KeyF) || joystick.right_trigger_pressed() {
-        if last_stand.perform(LastStandAction::FighterLaunch) {
-            info!("Launching fighter squadron! {} remaining", last_stand.fighters_remaining);
-            // TODO: Spawn fighter entity
-        }
+    if (keyboard.just_pressed(KeyCode::KeyF) || joystick.right_trigger_pressed())
+        && last_stand.perform(LastStandAction::FighterLaunch)
+    {
+        info!(
+            "Launching fighter squadron! {} remaining",
+            last_stand.fighters_remaining
+        );
+        // TODO: Spawn fighter entity
     }
 
     // ECM Burst (LB / E)
-    if keyboard.just_pressed(KeyCode::KeyE) || joystick.left_bumper() {
-        if last_stand.perform(LastStandAction::EcmBurst) {
-            info!("ECM Burst activated!");
-            // Spawn ECM burst entity
-            commands.spawn((
-                last_stand::EcmBurst {
-                    radius: 50.0,
-                    speed: 400.0,
-                    lifetime: 1.0,
-                },
-                Sprite {
-                    color: Color::srgba(0.3, 0.6, 1.0, 0.5),
-                    custom_size: Some(Vec2::splat(100.0)),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, -250.0, 8.0),
-            ));
-        }
+    if (keyboard.just_pressed(KeyCode::KeyE) || joystick.left_bumper())
+        && last_stand.perform(LastStandAction::EcmBurst)
+    {
+        info!("ECM Burst activated!");
+        // Spawn ECM burst entity
+        commands.spawn((
+            last_stand::EcmBurst {
+                radius: 50.0,
+                speed: 400.0,
+                lifetime: 1.0,
+            },
+            Sprite {
+                color: Color::srgba(0.3, 0.6, 1.0, 0.5),
+                custom_size: Some(Vec2::splat(100.0)),
+                ..default()
+            },
+            Transform::from_xyz(0.0, -250.0, 8.0),
+        ));
     }
 
     // Shield Booster (RB / Q)
-    if keyboard.just_pressed(KeyCode::KeyQ) || joystick.right_bumper() {
-        if last_stand.perform(LastStandAction::ShieldBooster) {
-            info!("Emergency shield booster activated! Shield: {:.0}%", last_stand.shield);
-        }
+    if (keyboard.just_pressed(KeyCode::KeyQ) || joystick.right_bumper())
+        && last_stand.perform(LastStandAction::ShieldBooster)
+    {
+        info!(
+            "Emergency shield booster activated! Shield: {:.0}%",
+            last_stand.shield
+        );
     }
 
     // Doomsday (Y / R)
-    if keyboard.just_pressed(KeyCode::KeyR) || joystick.y_button() {
-        if last_stand.perform(LastStandAction::Doomsday) {
-            info!("DOOMSDAY DEVICE ACTIVATED!");
-            // Spawn doomsday beam
-            commands.spawn((
-                last_stand::DoomsdayBeam {
-                    width: 80.0,
-                    damage_per_sec: 500.0,
-                    duration: 3.0,
-                },
-                Sprite {
-                    color: Color::srgb(1.0, 0.9, 0.5),
-                    custom_size: Some(Vec2::new(80.0, 800.0)),
-                    ..default()
-                },
-                Transform::from_xyz(0.0, 200.0, 15.0),
-            ));
-        }
+    if (keyboard.just_pressed(KeyCode::KeyR) || joystick.y_button())
+        && last_stand.perform(LastStandAction::Doomsday)
+    {
+        info!("DOOMSDAY DEVICE ACTIVATED!");
+        // Spawn doomsday beam
+        commands.spawn((
+            last_stand::DoomsdayBeam {
+                width: 80.0,
+                damage_per_sec: 500.0,
+                duration: 3.0,
+            },
+            Sprite {
+                color: Color::srgb(1.0, 0.9, 0.5),
+                custom_size: Some(Vec2::new(80.0, 800.0)),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 200.0, 15.0),
+        ));
     }
 
     // Confirm Descent (A / Space) - only in descent phase
-    if keyboard.just_pressed(KeyCode::Space) || joystick.confirm() {
-        if last_stand.in_descent && !last_stand.descent_confirmed {
-            if last_stand.perform(LastStandAction::ConfirmDescent) {
-                info!("DESCENT CONFIRMED - CNS Kairiola begins final approach");
-            }
-        }
+    if (keyboard.just_pressed(KeyCode::Space) || joystick.confirm())
+        && last_stand.in_descent
+        && !last_stand.descent_confirmed
+        && last_stand.perform(LastStandAction::ConfirmDescent)
+    {
+        info!("DESCENT CONFIRMED - CNS Kairiola begins final approach");
     }
 }
 

@@ -192,10 +192,7 @@ fn spawn_player_projectiles(
             let direction = Vec2::new(proj_angle.cos(), proj_angle.sin());
 
             // Small position offset for visual spread
-            let pos_offset = Vec2::new(
-                (i as f32 - (burst_count - 1) as f32 / 2.0) * 5.0,
-                0.0,
-            );
+            let pos_offset = Vec2::new((i as f32 - (burst_count - 1) as f32 / 2.0) * 5.0, 0.0);
             let spawn_pos = event.position + pos_offset;
 
             if is_missile {
