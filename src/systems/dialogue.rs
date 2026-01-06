@@ -1,10 +1,13 @@
 //! Dialogue System
 //!
-//! Handles Elder dialogue display during gameplay.
+//! Handles faction-specific dialogue display during gameplay.
+//! - Elder Fleet: "Tribal Elder" speaker (Minmatar vs Amarr)
+//! - Caldari/Gallente: "Fleet Command" speaker
 
 #![allow(dead_code)]
 
 use crate::core::*;
+use crate::games::ActiveModule;
 use bevy::prelude::*;
 
 /// Dialogue plugin
@@ -163,11 +166,16 @@ impl DialogueSystem {
 
     /// Show dialogue immediately (respects priority)
     pub fn show(&mut self, text: String, duration: f32, priority: u8) {
+        self.show_with_speaker(text, duration, priority, "Tribal Elder");
+    }
+
+    /// Show dialogue with specific speaker
+    pub fn show_with_speaker(&mut self, text: String, duration: f32, priority: u8, speaker: &str) {
         if priority >= self.priority || self.active_text.is_none() {
             self.active_text = Some(text);
             self.timer = duration;
             self.priority = priority;
-            self.speaker = "Tribal Elder".to_string();
+            self.speaker = speaker.to_string();
         } else {
             // Queue lower priority dialogue
             self.queue.push((text, duration, priority));
@@ -194,15 +202,26 @@ impl DialogueSystem {
 fn handle_dialogue_events(
     mut events: EventReader<DialogueEvent>,
     mut dialogue: ResMut<DialogueSystem>,
+    active_module: Res<ActiveModule>,
 ) {
     for event in events.read() {
+        let is_cg = active_module.is_caldari_gallente();
+
         let text = if let Some(custom) = &event.custom_text {
             custom.clone()
+        } else if is_cg {
+            get_cg_dialogue_text(&event.trigger)
         } else {
             get_dialogue_text(&event.trigger)
         };
 
-        dialogue.show(text, event.duration, event.priority);
+        let speaker = if is_cg {
+            "Fleet Command"
+        } else {
+            "Tribal Elder"
+        };
+
+        dialogue.show_with_speaker(text, event.duration, event.priority, speaker);
     }
 }
 
@@ -341,4 +360,169 @@ pub fn check_liberation_milestone(old_count: u32, new_count: u32) -> Option<u32>
         .iter()
         .find(|&&milestone| old_count < milestone && new_count >= milestone)
         .copied()
+}
+
+// ============================================================================
+// CALDARI/GALLENTE CAMPAIGN DIALOGUE
+// ============================================================================
+
+/// Get CG dialogue text for a trigger
+fn get_cg_dialogue_text(trigger: &DialogueTrigger) -> String {
+    match trigger {
+        DialogueTrigger::StageBriefing(stage) => get_cg_stage_briefing(*stage),
+        DialogueTrigger::BossIntro(name) => format!("Enemy commander {} engaged!", name),
+        DialogueTrigger::BossDefeated(name) => format!("{} neutralized. Well done, pilot.", name),
+        DialogueTrigger::ActComplete(act) => get_cg_act_complete(*act),
+        DialogueTrigger::LiberationMilestone(count) => get_cg_kill_milestone(*count),
+        DialogueTrigger::CombatCallout(callout) => get_cg_combat_callout(callout),
+        DialogueTrigger::MissionSuccess => get_cg_success_dialogue(),
+        DialogueTrigger::PerfectRun => get_cg_perfect_dialogue(),
+        DialogueTrigger::PlayerDeath => get_cg_death_dialogue(),
+    }
+}
+
+/// CG stage briefing dialogue - Battle of Caldari Prime
+fn get_cg_stage_briefing(stage: u32) -> String {
+    match stage {
+        // Mission 1: Orbital Skirmish
+        1 => "Pilot, this is Fleet Command. Enemy forces are probing our orbital defenses. \
+              Intercept and eliminate. This is first contact - show them what we're made of.",
+
+        // Mission 2: Urban Firefight
+        2 => "The battle has reached Caldari Prime's atmosphere. Enemy fighters are engaging \
+              above civilian population centers. Clear the airspace - the people below are counting on you.",
+
+        // Mission 3: Fleet Interdiction
+        3 => "Intelligence reports enemy reinforcements inbound. If they reach the front lines, \
+              our position becomes untenable. Intercept and destroy that convoy. No survivors.",
+
+        // Mission 4: Escalation Point
+        4 => "Both sides are committing heavier assets. We're authorizing tactical destroyer deployment. \
+              You've earned access to T3 destroyers. Use them well - this is where we hold the line.",
+
+        // Mission 5: Decisive Push
+        5 => "This is it, pilot. The final push for orbital superiority. Enemy fleet admiral is \
+              coordinating their defense. Take him out and we break their back. For Caldari Prime!",
+
+        _ => "Fleet Command standing by. Engage at will.",
+    }
+    .to_string()
+}
+
+/// CG act complete dialogue
+fn get_cg_act_complete(act: u32) -> String {
+    match act {
+        1 => "Orbital perimeter secured. Enemy probing attacks repelled. But this was just the \
+              opening salvo. They'll be back in force.",
+        2 => "Enemy reinforcement lines severed. Their fleet is isolated. Now we push for total \
+              orbital control.",
+        3 => "Victory! Orbital superiority achieved. Caldari Prime is secure. The enemy fleet \
+              is in full retreat. Outstanding work, pilot.",
+        _ => "Mission phase complete. Stand by for further orders.",
+    }
+    .to_string()
+}
+
+/// CG kill milestone dialogue (replaces liberation milestones)
+fn get_cg_kill_milestone(count: u32) -> String {
+    match count {
+        100 => "One hundred confirmed kills. Fleet Command takes note.",
+        250 => "Two-fifty hostiles neutralized. You're becoming a force multiplier.",
+        500 => "Five hundred kills. Enemy commanders are starting to fear your callsign.",
+        1000 => "One thousand confirmed. You're an ace several times over.",
+        2500 => "Twenty-five hundred. Medals will be minted for this campaign.",
+        5000 => "Five thousand hostiles eliminated. You've changed the course of this battle.",
+        10000 => "Ten thousand confirmed kills. Legends are written about pilots like you.",
+        25000 => "Twenty-five thousand. You're not just a pilot anymore - you're a war machine.",
+        _ => "Kills confirmed. Maintain pressure.",
+    }
+    .to_string()
+}
+
+/// CG combat callout dialogue
+fn get_cg_combat_callout(callout: &CombatCalloutType) -> String {
+    match callout {
+        CombatCalloutType::LowHealth => "Hull integrity compromised. Recommend evasive action.",
+        CombatCalloutType::NearDeath => "Critical damage! Get out of there, pilot!",
+        CombatCalloutType::BerserkActive => "Combat overdrive engaged. Give them hell!",
+        CombatCalloutType::Overheated => "Weapon systems overheating. Manage your heat signature.",
+        CombatCalloutType::BossLowHealth => "Target is critical! Finish it!",
+        CombatCalloutType::WaveIncoming => "New contacts on scope. Hostiles inbound.",
+        CombatCalloutType::LiberationPod => "Recovery beacon detected. Secure that asset.",
+    }
+    .to_string()
+}
+
+/// CG random success dialogue
+fn get_cg_success_dialogue() -> String {
+    let options = [
+        "Good work, pilot. Fleet Command is impressed.",
+        "Targets eliminated. RTB when ready.",
+        "Efficient and effective. That's what we like to see.",
+        "Hostile presence neutralized. Sector clear.",
+        "Confirmed kills across the board. Outstanding.",
+        "Mission parameters exceeded. Well done.",
+        "That's how it's done. Enemy forces in disarray.",
+        "Clean sweep. The enemy won't forget this.",
+    ];
+    options[fastrand::usize(..options.len())].to_string()
+}
+
+/// CG perfect run dialogue
+fn get_cg_perfect_dialogue() -> String {
+    let options = [
+        "Not a single hit taken. Textbook execution, pilot.",
+        "Flawless performance. You make it look easy.",
+        "Zero damage sustained. That's elite-level flying.",
+    ];
+    options[fastrand::usize(..options.len())].to_string()
+}
+
+/// CG death dialogue
+fn get_cg_death_dialogue() -> String {
+    "Pilot down! We're losing them... Search and rescue dispatched. Don't give up.".to_string()
+}
+
+// ============================================================================
+// SHIIGERU NIGHTMARE MODE DIALOGUE
+// ============================================================================
+
+/// Get Shiigeru Nightmare dialogue
+pub fn get_nightmare_dialogue(trigger: NightmareDialogueTrigger) -> String {
+    match trigger {
+        NightmareDialogueTrigger::Intro => {
+            "The Shiigeru is falling. Thousands of crew still aboard. Get in there and \
+             buy them time to evacuate. This is a one-way trip, pilot. Make it count."
+        }
+        NightmareDialogueTrigger::WaveStart(wave) => match wave {
+            1..=5 => "Hostiles detected. Internal defense systems are active.",
+            6..=10 => "They're throwing everything at you. Hold the line.",
+            11..=20 => "Escalating resistance. The ship's AI is adapting.",
+            _ => "You've lasted longer than anyone expected. Legendary.",
+        },
+        NightmareDialogueTrigger::BossSpawn(boss) => match boss {
+            "SECURITY CHIEF" => "Security Chief inbound. Watch for flanking maneuvers.",
+            "WEAPONS OFFICER" => "Weapons Officer engaging. Heavy firepower incoming.",
+            "DRONE SWARM" => "Automated defenses launching. Multiple contacts.",
+            "BRIDGE COMMANDER" => "Bridge Commander himself. This one's personal.",
+            _ => "Priority target detected. Engage with extreme prejudice.",
+        },
+        NightmareDialogueTrigger::HullCritical => {
+            "The Shiigeru's hull is failing. We're running out of time."
+        }
+        NightmareDialogueTrigger::NewRecord => {
+            "New survival record! You've exceeded all projections, pilot."
+        }
+    }
+    .to_string()
+}
+
+/// Nightmare mode dialogue triggers
+#[derive(Clone, Debug)]
+pub enum NightmareDialogueTrigger {
+    Intro,
+    WaveStart(u32),
+    BossSpawn(&'static str),
+    HullCritical,
+    NewRecord,
 }

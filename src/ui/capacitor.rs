@@ -250,6 +250,52 @@ fn draw_capacitor_wheel(
                 hull_color,
             );
 
+            // === HEAT PERCENTAGE (right side) ===
+            let heat_text_x = center.x + wheel_radius + 28.0;
+            let heat_color = heat_text_color(heat_pct);
+            painter.text(
+                egui::pos2(heat_text_x, center.y - 8.0),
+                egui::Align2::LEFT_CENTER,
+                format!("{:.0}%", heat_pct * 100.0),
+                egui::FontId::monospace(11.0),
+                heat_color,
+            );
+            painter.text(
+                egui::pos2(heat_text_x, center.y + 6.0),
+                egui::Align2::LEFT_CENTER,
+                "HEAT",
+                egui::FontId::monospace(8.0),
+                egui::Color32::from_rgb(100, 110, 125),
+            );
+
+            // === OVERHEAT WARNING FLASH ===
+            if heat_pct > 0.85 {
+                // Pulsing red border around the wheel
+                let flash_alpha = ((anim.pulse - 0.9) * 10.0).sin().abs();
+                let flash_color = egui::Color32::from_rgba_unmultiplied(
+                    255,
+                    40,
+                    40,
+                    (flash_alpha * 80.0) as u8,
+                );
+                painter.circle_stroke(
+                    center,
+                    wheel_radius + 6.0,
+                    egui::Stroke::new(3.0, flash_color),
+                );
+
+                // "OVERHEAT" warning text
+                if flash_alpha > 0.5 {
+                    painter.text(
+                        egui::pos2(center.x, center.y - wheel_radius - 18.0),
+                        egui::Align2::CENTER_CENTER,
+                        "⚠ OVERHEAT",
+                        egui::FontId::monospace(10.0),
+                        egui::Color32::from_rgb(255, 80, 60),
+                    );
+                }
+            }
+
             // === SPEED DISPLAY (center) ===
             painter.text(
                 egui::pos2(center.x, center.y + 2.0),
@@ -326,6 +372,19 @@ fn health_text_color(pct: f32) -> egui::Color32 {
         egui::Color32::from_rgb(255, 180, 80) // Warning - orange
     } else {
         egui::Color32::from_rgb(170, 180, 190) // Normal - gray-white
+    }
+}
+
+/// Get text color based on heat percentage (inverse of health - high is bad)
+fn heat_text_color(pct: f32) -> egui::Color32 {
+    if pct > 0.85 {
+        egui::Color32::from_rgb(255, 60, 60) // Critical - bright red
+    } else if pct > 0.60 {
+        egui::Color32::from_rgb(255, 140, 60) // Hot - orange
+    } else if pct > 0.30 {
+        egui::Color32::from_rgb(255, 200, 100) // Warm - golden
+    } else {
+        egui::Color32::from_rgb(100, 180, 200) // Cool - teal
     }
 }
 
