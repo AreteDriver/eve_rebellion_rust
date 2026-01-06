@@ -386,6 +386,9 @@ mod unix_impl {
         match File::open(JOYSTICK_DEVICE) {
             Ok(file) => {
                 // Set non-blocking mode
+                // SAFETY: file is a valid open file descriptor obtained from File::open().
+                // fcntl with F_GETFL/F_SETFL is safe on valid file descriptors.
+                // The file handle remains valid for the lifetime of this resource.
                 unsafe {
                     let fd = file.as_raw_fd();
                     let flags = libc::fcntl(fd, libc::F_GETFL);
@@ -420,6 +423,9 @@ mod unix_impl {
             match file.read_exact(&mut buffer) {
                 Ok(_) => {
                     // Parse event
+                    // SAFETY: buffer is exactly 8 bytes (size of JsEvent struct).
+                    // JsEvent is repr(C) with known layout matching Linux joystick API.
+                    // read_exact ensures buffer is fully populated before we read it.
                     let event = unsafe { std::ptr::read(buffer.as_ptr() as *const JsEvent) };
 
                     let event_type = event.event_type & !JS_EVENT_INIT;
