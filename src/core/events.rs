@@ -31,6 +31,10 @@ pub struct PlayerFireEvent {
     pub weapon_type: WeaponType,
     pub bullet_color: Color,
     pub damage: f32,
+    /// Number of projectiles to spawn (1 = normal, 3+ = burst)
+    pub burst_count: u32,
+    /// Spread angle in radians for burst fire (0 = parallel)
+    pub spread_angle: f32,
 }
 
 /// Spawn enemy event

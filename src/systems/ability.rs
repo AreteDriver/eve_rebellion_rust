@@ -251,6 +251,7 @@ impl Plugin for AbilityPlugin {
                     ability_input,
                     ability_update_cooldowns,
                     ability_apply_effects,
+                    ability_handle_instant_effects,
                     ability_end_effects,
                 )
                     .chain()
@@ -366,6 +367,37 @@ fn ability_apply_effects(
         // Apply speed effect to movement
         if effects.speed_multiplier != 1.0 {
             movement.max_speed = movement.max_speed * effects.speed_multiplier;
+        }
+    }
+}
+
+/// Handle instant ability effects (Shield Boost, etc.)
+fn ability_handle_instant_effects(
+    mut ability_events: EventReader<AbilityActivatedEvent>,
+    mut query: Query<&mut ShipStats, With<Player>>,
+) {
+    for event in ability_events.read() {
+        let Ok(mut stats) = query.get_mut(event.player_entity) else {
+            continue;
+        };
+
+        match event.ability_type {
+            AbilityType::ShieldBoost => {
+                // Instant shield restore - 50% of max shield
+                let heal_amount = stats.max_shield * 0.5;
+                stats.shield = (stats.shield + heal_amount).min(stats.max_shield);
+                info!(
+                    "Shield Boost: +{:.0} shield ({:.0}/{:.0})",
+                    heal_amount, stats.shield, stats.max_shield
+                );
+            }
+            AbilityType::Salvo | AbilityType::RocketBarrage => {
+                // Instant burst abilities - already handled by weapon system via extra_projectiles
+                // But we mark the ability as done since duration is 0
+            }
+            _ => {
+                // Other abilities have duration-based effects or are entity spawners
+            }
         }
     }
 }

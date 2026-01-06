@@ -4,6 +4,7 @@
 
 pub mod boss;
 pub mod collectible;
+pub mod drone;
 pub mod enemy;
 pub mod player;
 pub mod projectile;
@@ -11,6 +12,7 @@ pub mod wingman;
 
 pub use boss::*;
 pub use collectible::*;
+pub use drone::*;
 pub use enemy::*;
 pub use player::*;
 pub use projectile::*;
@@ -29,6 +31,7 @@ impl Plugin for EntitiesPlugin {
             ProjectilePlugin,
             CollectiblePlugin,
             WingmanPlugin,
+            DronePlugin,
         ));
     }
 }

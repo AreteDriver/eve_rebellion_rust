@@ -152,7 +152,6 @@ fn spawn_player_projectiles(
 ) {
     for event in fire_events.read() {
         let damage_mult = berserk.damage_mult();
-        let velocity = event.direction * PLAYER_BULLET_SPEED;
 
         // Determine damage type from weapon
         let damage_type = match event.weapon_type {
@@ -173,57 +172,86 @@ fn spawn_player_projectiles(
         // Check if this is a seeking missile (Kestrel/Caldari missile launcher)
         let is_missile = event.weapon_type == WeaponType::MissileLauncher;
 
-        if is_missile {
-            // Seeking missile - larger, slower, homes on enemies, more damage
-            let missile_velocity = event.direction * (PLAYER_BULLET_SPEED * 0.7); // Slower than bullets
-            let missile_damage = event.damage * damage_mult * 1.25; // 25% more damage than rockets
+        // Calculate projectile spread for burst fire
+        let burst_count = event.burst_count.max(1);
+        let spread_angle = event.spread_angle;
 
-            commands.spawn((
-                PlayerProjectile,
-                SeekingProjectile {
-                    turn_rate: 4.0, // Radians per second
-                    acquire_range: 400.0,
-                },
-                ProjectilePhysics {
-                    velocity: missile_velocity,
-                    lifetime: 3.0, // Longer lifetime for tracking
-                },
-                ProjectileDamage {
-                    damage: missile_damage,
-                    damage_type,
-                    crit_chance: 0.15,     // 15% crit for missiles
-                    crit_multiplier: 1.75, // Higher crit damage for missiles
-                },
-                BulletTrail::new(Color::srgb(1.0, 0.6, 0.2)), // Orange trail for missiles
-                Sprite {
-                    color,
-                    custom_size: Some(Vec2::new(6.0, 14.0)), // Larger missile sprite
-                    ..default()
-                },
-                Transform::from_xyz(event.position.x, event.position.y, LAYER_PLAYER_BULLETS),
-            ));
-        } else {
-            // Standard projectile with bullet trail
-            commands.spawn((
-                PlayerProjectile,
-                ProjectilePhysics {
-                    velocity,
-                    lifetime: 2.0,
-                },
-                ProjectileDamage {
-                    damage: event.damage * damage_mult,
-                    damage_type,
-                    crit_chance: 0.1, // 10% crit for autocannons
-                    crit_multiplier: 1.5,
-                },
-                BulletTrail::new(color.with_alpha(0.5)),
-                Sprite {
-                    color,
-                    custom_size: Some(Vec2::new(4.0, 12.0)),
-                    ..default()
-                },
-                Transform::from_xyz(event.position.x, event.position.y, LAYER_PLAYER_BULLETS),
-            ));
+        for i in 0..burst_count {
+            // Calculate direction offset for this projectile
+            let angle_offset = if burst_count > 1 {
+                // Distribute evenly across spread angle, centered
+                let spread_step = spread_angle / (burst_count - 1) as f32;
+                -spread_angle / 2.0 + spread_step * i as f32
+            } else {
+                0.0
+            };
+
+            // Rotate direction by angle offset
+            let base_angle = event.direction.y.atan2(event.direction.x);
+            let proj_angle = base_angle + angle_offset;
+            let direction = Vec2::new(proj_angle.cos(), proj_angle.sin());
+
+            // Small position offset for visual spread
+            let pos_offset = Vec2::new(
+                (i as f32 - (burst_count - 1) as f32 / 2.0) * 5.0,
+                0.0,
+            );
+            let spawn_pos = event.position + pos_offset;
+
+            if is_missile {
+                // Seeking missile - larger, slower, homes on enemies, more damage
+                let missile_velocity = direction * (PLAYER_BULLET_SPEED * 0.7);
+                let missile_damage = event.damage * damage_mult * 1.25;
+
+                commands.spawn((
+                    PlayerProjectile,
+                    SeekingProjectile {
+                        turn_rate: 4.0,
+                        acquire_range: 400.0,
+                    },
+                    ProjectilePhysics {
+                        velocity: missile_velocity,
+                        lifetime: 3.0,
+                    },
+                    ProjectileDamage {
+                        damage: missile_damage,
+                        damage_type,
+                        crit_chance: 0.15,
+                        crit_multiplier: 1.75,
+                    },
+                    BulletTrail::new(Color::srgb(1.0, 0.6, 0.2)),
+                    Sprite {
+                        color,
+                        custom_size: Some(Vec2::new(6.0, 14.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(spawn_pos.x, spawn_pos.y, LAYER_PLAYER_BULLETS),
+                ));
+            } else {
+                // Standard projectile with bullet trail
+                let velocity = direction * PLAYER_BULLET_SPEED;
+
+                commands.spawn((
+                    PlayerProjectile,
+                    ProjectilePhysics {
+                        velocity,
+                        lifetime: 2.0,
+                    },
+                    ProjectileDamage {
+                        damage: event.damage * damage_mult,
+                        damage_type,
+                        crit_chance: 0.1,
+                        crit_multiplier: 1.5,
+                    },
+                    BulletTrail::new(color.with_alpha(0.5)),
+                    Sprite {
+                        color,
+                        custom_size: Some(Vec2::new(4.0, 12.0)),
+                        ..default()
+                    },
+                    Transform::from_xyz(spawn_pos.x, spawn_pos.y, LAYER_PLAYER_BULLETS),
+                ));
+            }
         }
     }
 }

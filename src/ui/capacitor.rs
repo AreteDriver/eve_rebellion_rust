@@ -1,11 +1,11 @@
-//! EVE-Style Capacitor Wheel
+//! EVE-Style HUD Wheel
 //!
-//! Exact replica of EVE Online's HUD capacitor display:
+//! EVE Online-inspired HUD display:
 //! - Three concentric semicircular health arcs (Shield/Armor/Structure)
-//! - Central capacitor with concentric rings of dashes
+//! - Central HEAT gauge with radial spoke pattern (fills as heat builds)
 //! - Speed display at bottom center
 //! - Percentage readouts on left
-//! - Overheating status indicators
+//! - Heat status indicators
 
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
@@ -423,136 +423,176 @@ fn draw_arc_segment(
     }
 }
 
-/// Draw capacitor as concentric rings of dashes (EVE style)
+/// Draw HEAT display as radial spoke gauges (EVE Online style)
+/// Empty = cool, Filled = hot
+/// Color shifts: teal (cool) → golden (warm) → red (overheating)
 fn draw_capacitor_rings(
     painter: &egui::Painter,
     center: egui::Pos2,
     inner_radius: f32,
     outer_radius: f32,
-    cap_pct: f32,
+    _cap_pct: f32, // Unused - kept for API compatibility
     heat_pct: f32,
     pulse: f32,
 ) {
-    // Number of concentric rings
-    let num_rings = 5;
-    let ring_spacing = (outer_radius - inner_radius) / num_rings as f32;
+    // Radial spoke pattern - rectangular gauges arranged like wheel spokes
+    let num_layers = 3;
+    let gauges_per_layer = 16;
+    let total_gauges = num_layers * gauges_per_layer;
 
-    // Capacitor color - golden/orange, shifts red when overheating
-    let base_color = if heat_pct > 0.6 {
-        // Overheating - shift toward red/orange
-        let heat_factor = (heat_pct - 0.6) * 2.5;
+    // Heat fills from inside-out (heat builds up from core)
+    let filled_gauges = (heat_pct * total_gauges as f32).round() as u32;
+
+    // Heat color gradient: teal → golden → orange → red
+    let heat_color = if heat_pct < 0.3 {
+        // Cool - teal/cyan
+        let t = heat_pct / 0.3;
+        egui::Color32::from_rgb(
+            (60.0 + 140.0 * t) as u8,   // 60 → 200
+            (180.0 - 30.0 * t) as u8,   // 180 → 150
+            (200.0 - 100.0 * t) as u8,  // 200 → 100
+        )
+    } else if heat_pct < 0.6 {
+        // Warm - golden/yellow
+        let t = (heat_pct - 0.3) / 0.3;
+        egui::Color32::from_rgb(
+            (200.0 + 55.0 * t) as u8,  // 200 → 255
+            (150.0 + 30.0 * t) as u8,  // 150 → 180
+            (100.0 - 50.0 * t) as u8,  // 100 → 50
+        )
+    } else if heat_pct < 0.85 {
+        // Hot - orange
+        let t = (heat_pct - 0.6) / 0.25;
         egui::Color32::from_rgb(
             255,
-            (180.0 * (1.0 - heat_factor * 0.5)) as u8,
-            (100.0 * (1.0 - heat_factor)) as u8,
+            (180.0 - 80.0 * t) as u8,  // 180 → 100
+            (50.0 - 30.0 * t) as u8,   // 50 → 20
         )
     } else {
-        // Normal - golden orange
-        egui::Color32::from_rgb(255, 175, 90)
+        // Critical - red (pulsing)
+        let critical_pulse = 0.7 + 0.3 * ((pulse - 0.9) * 5.0).sin().abs();
+        egui::Color32::from_rgb(
+            255,
+            (60.0 * critical_pulse) as u8,
+            (30.0 * critical_pulse) as u8,
+        )
     };
 
-    let empty_color = egui::Color32::from_rgb(35, 40, 50);
+    let empty_color = egui::Color32::from_rgb(20, 35, 45); // Dark teal-gray (cool look)
+    let border_color = egui::Color32::from_rgb(40, 60, 75);
 
-    // Total dashes across all rings
-    let total_dashes: u32 = (0..num_rings).map(|r| 8 + r * 4).sum();
-    let filled_dashes = (cap_pct * total_dashes as f32) as u32;
-    let mut dash_count = 0;
+    // Layer spacing
+    let layer_height = (outer_radius - inner_radius - 4.0) / num_layers as f32;
+    let gauge_gap = 2.0;
+    let gauge_height = layer_height - gauge_gap;
 
-    // Draw each ring from inside out
-    for ring in 0..num_rings {
-        let ring_radius = inner_radius + 4.0 + ring as f32 * ring_spacing;
-        let num_dashes = 8 + ring * 4; // More dashes on outer rings
-        let dash_arc = PI * 2.0 / num_dashes as f32;
-        let dash_length = dash_arc * 0.6; // 60% of arc is dash, 40% gap
-        let dash_width = 3.0 + ring as f32 * 0.5;
+    // Draw gauges - fill from inside-out (heat builds from core)
+    let mut gauge_index = 0;
 
-        for i in 0..num_dashes {
-            let angle = (i as f32 / num_dashes as f32) * PI * 2.0 - PI / 2.0;
+    // Inner layers first (heat builds from inside out)
+    for layer in 0..num_layers {
+        let layer_inner = inner_radius + 2.0 + layer as f32 * layer_height;
+        let layer_outer = layer_inner + gauge_height;
 
-            // Determine if this dash is filled (fill from outside in, top first)
-            let is_filled = dash_count < filled_dashes;
-            dash_count += 1;
+        for i in 0..gauges_per_layer {
+            // Start from top (-PI/2), go clockwise
+            let angle = -PI / 2.0 + (i as f32 / gauges_per_layer as f32) * PI * 2.0;
+            let gauge_arc = (PI * 2.0 / gauges_per_layer as f32) * 0.75;
 
-            let color = if is_filled {
-                // Apply pulse effect to filled dashes
-                let brightness = pulse;
+            // Fill from inside-out
+            let is_filled = gauge_index < filled_gauges;
+            gauge_index += 1;
+
+            let fill_color = if is_filled {
+                // Apply subtle pulse to filled gauges
+                let pulse_factor = if heat_pct > 0.85 { pulse } else { 0.95 + 0.05 * pulse };
                 egui::Color32::from_rgb(
-                    (base_color.r() as f32 * brightness).min(255.0) as u8,
-                    (base_color.g() as f32 * brightness).min(255.0) as u8,
-                    (base_color.b() as f32 * brightness).min(255.0) as u8,
+                    (heat_color.r() as f32 * pulse_factor).min(255.0) as u8,
+                    (heat_color.g() as f32 * pulse_factor).min(255.0) as u8,
+                    (heat_color.b() as f32 * pulse_factor).min(255.0) as u8,
                 )
             } else {
                 empty_color
             };
 
-            draw_capacitor_dash(
+            draw_radial_gauge(
                 painter,
                 center,
-                ring_radius,
-                dash_width,
+                layer_inner,
+                layer_outer,
                 angle,
-                dash_length,
-                color,
+                gauge_arc,
+                fill_color,
+                border_color,
             );
         }
     }
 
-    // Center glow when capacitor is high
-    if cap_pct > 0.3 {
-        let glow_alpha = ((cap_pct - 0.3) * 0.5 * 255.0 * pulse) as u8;
+    // Center glow when heat is high (warning)
+    if heat_pct > 0.5 {
+        let glow_intensity = (heat_pct - 0.5) * 2.0; // 0.0 at 50%, 1.0 at 100%
+        let glow_alpha = (glow_intensity * 0.5 * 255.0 * pulse) as u8;
         let glow_color = egui::Color32::from_rgba_unmultiplied(
-            base_color.r(),
-            base_color.g(),
-            base_color.b(),
+            heat_color.r(),
+            (heat_color.g() as f32 * 0.6) as u8,
+            (heat_color.b() as f32 * 0.4) as u8,
             glow_alpha,
         );
-        painter.circle_filled(center, inner_radius * 0.6, glow_color);
+        painter.circle_filled(center, inner_radius * 0.7, glow_color);
     }
 }
 
-/// Draw a single capacitor dash (small arc segment)
-fn draw_capacitor_dash(
+/// Draw a single radial gauge (rectangular cell pointing outward)
+fn draw_radial_gauge(
     painter: &egui::Painter,
     center: egui::Pos2,
-    radius: f32,
-    width: f32,
-    start_angle: f32,
-    arc_span: f32,
-    color: egui::Color32,
+    inner_radius: f32,
+    outer_radius: f32,
+    center_angle: f32,
+    arc_width: f32,
+    fill_color: egui::Color32,
+    border_color: egui::Color32,
 ) {
-    let steps = 4;
-    let inner_r = radius - width / 2.0;
-    let outer_r = radius + width / 2.0;
+    let half_arc = arc_width / 2.0;
+    let start_angle = center_angle - half_arc;
+    let end_angle = center_angle + half_arc;
 
-    let mut points = Vec::with_capacity((steps + 1) * 2);
+    // Create trapezoid shape (wider at outer edge, narrower at inner)
+    let points = vec![
+        // Inner edge (narrower)
+        egui::pos2(
+            center.x + inner_radius * start_angle.cos(),
+            center.y + inner_radius * start_angle.sin(),
+        ),
+        // Outer edge left
+        egui::pos2(
+            center.x + outer_radius * start_angle.cos(),
+            center.y + outer_radius * start_angle.sin(),
+        ),
+        // Outer edge right
+        egui::pos2(
+            center.x + outer_radius * end_angle.cos(),
+            center.y + outer_radius * end_angle.sin(),
+        ),
+        // Inner edge right
+        egui::pos2(
+            center.x + inner_radius * end_angle.cos(),
+            center.y + inner_radius * end_angle.sin(),
+        ),
+    ];
 
-    // Outer arc
-    for i in 0..=steps {
-        let t = i as f32 / steps as f32;
-        let angle = start_angle + arc_span * t;
-        points.push(egui::pos2(
-            center.x + outer_r * angle.cos(),
-            center.y + outer_r * angle.sin(),
-        ));
-    }
+    // Fill
+    painter.add(egui::Shape::convex_polygon(
+        points.clone(),
+        fill_color,
+        egui::Stroke::NONE,
+    ));
 
-    // Inner arc (reversed)
-    for i in (0..=steps).rev() {
-        let t = i as f32 / steps as f32;
-        let angle = start_angle + arc_span * t;
-        points.push(egui::pos2(
-            center.x + inner_r * angle.cos(),
-            center.y + inner_r * angle.sin(),
-        ));
-    }
-
-    if points.len() >= 3 {
-        painter.add(egui::Shape::convex_polygon(
-            points,
-            color,
-            egui::Stroke::NONE,
-        ));
-    }
+    // Border
+    painter.add(egui::Shape::closed_line(
+        points,
+        egui::Stroke::new(0.5, border_color),
+    ));
 }
 
 /// Draw overheating status indicators (small orange/red marks)

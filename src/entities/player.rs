@@ -500,12 +500,12 @@ fn player_shooting(
     time: Res<Time>,
     keyboard: Res<ButtonInput<KeyCode>>,
     joystick: Res<crate::systems::JoystickState>,
-    mut query: Query<(&Transform, &mut Weapon), With<Player>>,
+    mut query: Query<(&Transform, &mut Weapon, &AbilityEffects), With<Player>>,
     mut fire_events: EventWriter<PlayerFireEvent>,
     berserk: Res<BerserkSystem>,
     mut heat_system: ResMut<crate::systems::ComboHeatSystem>,
 ) {
-    let Ok((transform, mut weapon)) = query.get_single_mut() else {
+    let Ok((transform, mut weapon, ability_effects)) = query.get_single_mut() else {
         return;
     };
 
@@ -560,6 +560,17 @@ fn player_shooting(
         let fire_rate = weapon.fire_rate * berserk_mult * heat_mult;
         weapon.cooldown = 1.0 / fire_rate;
 
+        // Calculate burst parameters from ability effects
+        // extra_projectiles: 2 = triple shot (Rocket Barrage), 3 = quad shot (Salvo)
+        let burst_count = 1 + ability_effects.extra_projectiles;
+        let spread_angle = if ability_effects.extra_projectiles > 0 {
+            // Spread angle based on projectile count
+            // 3 projectiles = 30° spread, 4 = 40°, etc.
+            (burst_count as f32 * 10.0).to_radians()
+        } else {
+            0.0
+        };
+
         // Send fire event
         fire_events.send(PlayerFireEvent {
             position: transform.translation.truncate(),
@@ -567,6 +578,8 @@ fn player_shooting(
             weapon_type: weapon.weapon_type,
             bullet_color: weapon.bullet_color,
             damage: weapon.damage,
+            burst_count,
+            spread_angle,
         });
     }
 }

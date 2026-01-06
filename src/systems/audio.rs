@@ -12,6 +12,7 @@ use std::f32::consts::PI;
 use std::io::Cursor;
 
 use crate::core::{BossSpawnEvent, WaveCompleteEvent, *};
+use crate::systems::ability::{AbilityActivatedEvent, AbilityType};
 
 /// Audio plugin
 pub struct AudioPlugin;
@@ -32,6 +33,7 @@ impl Plugin for AudioPlugin {
                     play_health_warnings,
                     play_wave_complete_sound,
                     play_boss_spawn_sound,
+                    play_ability_sounds,
                 )
                     .run_if(in_state(GameState::Playing)),
             );
@@ -86,6 +88,14 @@ pub struct SoundAssets {
     // Menu sounds
     pub menu_select: Option<Handle<AudioSource>>,
     pub menu_confirm: Option<Handle<AudioSource>>,
+    // Ability sounds
+    pub ability_speed: Option<Handle<AudioSource>>,      // Overdrive, Afterburner
+    pub ability_shield: Option<Handle<AudioSource>>,     // Shield Boost
+    pub ability_armor: Option<Handle<AudioSource>>,      // Armor Hardener, Armor Repair
+    pub ability_weapon: Option<Handle<AudioSource>>,     // Salvo, Rocket Barrage, Scorch
+    pub ability_drone: Option<Handle<AudioSource>>,      // Deploy Drone, Drone Bay
+    pub ability_debuff: Option<Handle<AudioSource>>,     // Warp Disruptor
+    pub ability_damage: Option<Handle<AudioSource>>,     // Close Range
 }
 
 /// Tracks when warnings should play (to avoid spamming)
@@ -196,6 +206,29 @@ fn generate_sounds(
     }
     if let Some(source) = generate_menu_confirm() {
         sounds.menu_confirm = Some(audio_sources.add(source));
+    }
+
+    // Ability sounds
+    if let Some(source) = generate_ability_speed() {
+        sounds.ability_speed = Some(audio_sources.add(source));
+    }
+    if let Some(source) = generate_ability_shield() {
+        sounds.ability_shield = Some(audio_sources.add(source));
+    }
+    if let Some(source) = generate_ability_armor() {
+        sounds.ability_armor = Some(audio_sources.add(source));
+    }
+    if let Some(source) = generate_ability_weapon() {
+        sounds.ability_weapon = Some(audio_sources.add(source));
+    }
+    if let Some(source) = generate_ability_drone() {
+        sounds.ability_drone = Some(audio_sources.add(source));
+    }
+    if let Some(source) = generate_ability_debuff() {
+        sounds.ability_debuff = Some(audio_sources.add(source));
+    }
+    if let Some(source) = generate_ability_damage() {
+        sounds.ability_damage = Some(audio_sources.add(source));
     }
 
     info!("Sound effects generated!");
@@ -1021,8 +1054,265 @@ fn generate_menu_confirm() -> Option<AudioSource> {
 }
 
 // =============================================================================
+// ABILITY SOUNDS
+// =============================================================================
+
+/// Generate speed ability sound - engine boost whoosh
+fn generate_ability_speed() -> Option<AudioSource> {
+    let sample_rate = 44100u32;
+    let duration = 0.4;
+    let num_samples = (sample_rate as f32 * duration) as usize;
+    let mut samples = Vec::with_capacity(num_samples);
+
+    for i in 0..num_samples {
+        let t = i as f32 / sample_rate as f32;
+
+        // Rising engine frequency
+        let freq = 150.0 + t * 800.0;
+        let engine = (2.0 * PI * freq * t).sin() * 0.4;
+
+        // Turbo whoosh (filtered noise)
+        let whoosh = (fastrand::f32() * 2.0 - 1.0) * 0.35 * (t * 5.0).min(1.0);
+
+        // High overtone
+        let high = (2.0 * PI * (freq * 2.5) * t).sin() * 0.15 * (t * 8.0).min(1.0);
+
+        let env = (1.0 - (-t * 15.0).exp()) * (1.0 - (t / duration).powf(1.5));
+
+        let sample = ((engine + whoosh + high) * env * 0.7).clamp(-1.0, 1.0);
+        samples.push(sample);
+    }
+
+    create_audio_source(&samples, sample_rate)
+}
+
+/// Generate shield ability sound - energy bubble activation
+fn generate_ability_shield() -> Option<AudioSource> {
+    let sample_rate = 44100u32;
+    let duration = 0.35;
+    let num_samples = (sample_rate as f32 * duration) as usize;
+    let mut samples = Vec::with_capacity(num_samples);
+
+    for i in 0..num_samples {
+        let t = i as f32 / sample_rate as f32;
+
+        // Shield activation sweep
+        let freq = 800.0 - t * 400.0;
+        let sweep = (2.0 * PI * freq * t).sin() * 0.4;
+
+        // Shimmer
+        let shimmer = (2.0 * PI * 2400.0 * t).sin() * 0.2 * (1.0 + (PI * 20.0 * t).sin() * 0.5);
+
+        // Bubble pop at start
+        let pop = (2.0 * PI * 300.0 * t).sin() * (-t * 60.0).exp() * 0.3;
+
+        let env = (1.0 - (-t * 25.0).exp()) * (-t * 4.0).exp();
+
+        let sample = ((sweep + shimmer + pop) * env * 0.6).clamp(-1.0, 1.0);
+        samples.push(sample);
+    }
+
+    create_audio_source(&samples, sample_rate)
+}
+
+/// Generate armor ability sound - metallic clang/hardening
+fn generate_ability_armor() -> Option<AudioSource> {
+    let sample_rate = 44100u32;
+    let duration = 0.3;
+    let num_samples = (sample_rate as f32 * duration) as usize;
+    let mut samples = Vec::with_capacity(num_samples);
+
+    for i in 0..num_samples {
+        let t = i as f32 / sample_rate as f32;
+
+        // Metallic clang
+        let clang = (2.0 * PI * 400.0 * t).sin() * 0.3 * (-t * 20.0).exp();
+
+        // Harmonic overtones (metallic)
+        let harm1 = (2.0 * PI * 800.0 * t).sin() * 0.2 * (-t * 25.0).exp();
+        let harm2 = (2.0 * PI * 1200.0 * t).sin() * 0.15 * (-t * 30.0).exp();
+
+        // Low rumble for weight
+        let rumble = (2.0 * PI * 80.0 * t).sin() * 0.25 * (-t * 10.0).exp();
+
+        let sample = ((clang + harm1 + harm2 + rumble) * 0.7).clamp(-1.0, 1.0);
+        samples.push(sample);
+    }
+
+    create_audio_source(&samples, sample_rate)
+}
+
+/// Generate weapon ability sound - charging burst
+fn generate_ability_weapon() -> Option<AudioSource> {
+    let sample_rate = 44100u32;
+    let duration = 0.25;
+    let num_samples = (sample_rate as f32 * duration) as usize;
+    let mut samples = Vec::with_capacity(num_samples);
+
+    for i in 0..num_samples {
+        let t = i as f32 / sample_rate as f32;
+
+        // Rapid charge up
+        let freq = 200.0 + t * 1200.0;
+        let charge = (2.0 * PI * freq * t).sin() * 0.4;
+
+        // Burst
+        let burst = if t > 0.15 {
+            (2.0 * PI * 500.0 * t).sin() * 0.5 * (-(t - 0.15) * 40.0).exp()
+        } else {
+            0.0
+        };
+
+        // Crackle
+        let crackle = if fastrand::f32() < 0.1 {
+            (fastrand::f32() * 2.0 - 1.0) * 0.3
+        } else {
+            0.0
+        };
+
+        let env = (1.0 - (-t * 40.0).exp());
+
+        let sample = ((charge + burst + crackle) * env * 0.6).clamp(-1.0, 1.0);
+        samples.push(sample);
+    }
+
+    create_audio_source(&samples, sample_rate)
+}
+
+/// Generate drone ability sound - mechanical launch
+fn generate_ability_drone() -> Option<AudioSource> {
+    let sample_rate = 44100u32;
+    let duration = 0.4;
+    let num_samples = (sample_rate as f32 * duration) as usize;
+    let mut samples = Vec::with_capacity(num_samples);
+
+    for i in 0..num_samples {
+        let t = i as f32 / sample_rate as f32;
+
+        // Mechanical hum
+        let hum = (2.0 * PI * 120.0 * t).sin() * 0.3;
+
+        // Drone whine (rising)
+        let freq = 400.0 + t * 300.0;
+        let whine = (2.0 * PI * freq * t).sin() * 0.25;
+
+        // Launch click
+        let click = (2.0 * PI * 1000.0 * t).sin() * (-t * 100.0).exp() * 0.4;
+
+        // Propeller flutter
+        let flutter = (2.0 * PI * 60.0 * t).sin() * 0.15 * (t * 4.0).min(1.0);
+
+        let env = (1.0 - (-t * 20.0).exp()) * (1.0 - (t / duration).powf(2.0));
+
+        let sample = ((hum + whine + click + flutter) * env * 0.6).clamp(-1.0, 1.0);
+        samples.push(sample);
+    }
+
+    create_audio_source(&samples, sample_rate)
+}
+
+/// Generate debuff ability sound - disrupting pulse
+fn generate_ability_debuff() -> Option<AudioSource> {
+    let sample_rate = 44100u32;
+    let duration = 0.35;
+    let num_samples = (sample_rate as f32 * duration) as usize;
+    let mut samples = Vec::with_capacity(num_samples);
+
+    for i in 0..num_samples {
+        let t = i as f32 / sample_rate as f32;
+
+        // Warping frequency
+        let warp = (2.0 * PI * (300.0 + 200.0 * (PI * 15.0 * t).sin()) * t).sin() * 0.4;
+
+        // Disruptor pulse
+        let pulse = (2.0 * PI * 100.0 * t).sin() * 0.3 * (1.0 + (PI * 8.0 * t).sin() * 0.5);
+
+        // Static
+        let static_noise = (fastrand::f32() * 2.0 - 1.0) * 0.15;
+
+        let env = (1.0 - (-t * 20.0).exp()) * (-t * 5.0).exp();
+
+        let sample = ((warp + pulse + static_noise) * env * 0.6).clamp(-1.0, 1.0);
+        samples.push(sample);
+    }
+
+    create_audio_source(&samples, sample_rate)
+}
+
+/// Generate damage ability sound - power surge
+fn generate_ability_damage() -> Option<AudioSource> {
+    let sample_rate = 44100u32;
+    let duration = 0.3;
+    let num_samples = (sample_rate as f32 * duration) as usize;
+    let mut samples = Vec::with_capacity(num_samples);
+
+    for i in 0..num_samples {
+        let t = i as f32 / sample_rate as f32;
+
+        // Power charge
+        let charge = (2.0 * PI * (500.0 + t * 600.0) * t).sin() * 0.4;
+
+        // Impact hit
+        let impact = (2.0 * PI * 150.0 * t).sin() * (-t * 30.0).exp() * 0.5;
+
+        // Crackle
+        let crackle = if fastrand::f32() < 0.12 {
+            (fastrand::f32() * 2.0 - 1.0) * 0.35
+        } else {
+            0.0
+        };
+
+        let env = (1.0 - (-t * 35.0).exp()) * (-t * 6.0).exp();
+
+        let sample = ((charge + impact + crackle) * env * 0.7).clamp(-1.0, 1.0);
+        samples.push(sample);
+    }
+
+    create_audio_source(&samples, sample_rate)
+}
+
+// =============================================================================
 // NEW PLAYBACK SYSTEMS
 // =============================================================================
+
+/// Play ability activation sounds
+fn play_ability_sounds(
+    mut commands: Commands,
+    mut ability_events: EventReader<AbilityActivatedEvent>,
+    sounds: Res<SoundAssets>,
+    settings: Res<SoundSettings>,
+) {
+    if !settings.enabled {
+        ability_events.clear();
+        return;
+    }
+
+    for event in ability_events.read() {
+        let sound = match event.ability_type {
+            AbilityType::Overdrive | AbilityType::Afterburner => sounds.ability_speed.clone(),
+            AbilityType::ShieldBoost => sounds.ability_shield.clone(),
+            AbilityType::ArmorHardener | AbilityType::ArmorRepair => sounds.ability_armor.clone(),
+            AbilityType::RocketBarrage | AbilityType::Salvo | AbilityType::Scorch => {
+                sounds.ability_weapon.clone()
+            }
+            AbilityType::DeployDrone | AbilityType::DroneBay => sounds.ability_drone.clone(),
+            AbilityType::WarpDisruptor => sounds.ability_debuff.clone(),
+            AbilityType::CloseRange => sounds.ability_damage.clone(),
+            AbilityType::None => None,
+        };
+
+        if let Some(source) = sound {
+            commands.spawn((
+                AudioPlayer(source),
+                PlaybackSettings {
+                    mode: PlaybackMode::Despawn,
+                    volume: Volume::new(settings.sfx_volume * settings.master_volume * 0.85),
+                    ..default()
+                },
+            ));
+        }
+    }
+}
 
 /// Play wave complete sound
 fn play_wave_complete_sound(
