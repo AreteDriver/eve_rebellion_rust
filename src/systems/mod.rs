@@ -2,6 +2,7 @@
 //!
 //! Core gameplay systems: collision, spawning, scoring, effects, input, dialogue, audio.
 
+pub mod ability;
 pub mod audio;
 pub mod boss;
 pub mod campaign;
@@ -15,6 +16,7 @@ pub mod scoring;
 pub mod scoring_v2;
 pub mod spawning;
 
+pub use ability::*;
 pub use audio::*;
 pub use boss::*;
 pub use campaign::CampaignPlugin;
@@ -38,6 +40,7 @@ pub struct SystemsPlugin;
 impl Plugin for SystemsPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
+            AbilityPlugin,
             CollisionPlugin,
             SpawningPlugin,
             ScoringPlugin,

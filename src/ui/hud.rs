@@ -7,7 +7,7 @@
 
 use crate::core::*;
 use crate::entities::{Boss, BossData, BossState, Player, PowerupEffects, Wingman, WingmanTracker};
-use crate::systems::{ComboHeatSystem, DialogueSystem};
+use crate::systems::{Ability, AbilityType, ComboHeatSystem, DialogueSystem};
 use bevy::prelude::*;
 
 /// HUD plugin
@@ -31,6 +31,7 @@ impl Plugin for HudPlugin {
                     update_boss_health_bar,
                     update_dialogue_display,
                     update_wingman_gauge,
+                    update_ability_indicator,
                 )
                     .run_if(in_state(GameState::Playing)),
             )
@@ -166,6 +167,22 @@ pub struct WingmanGaugeFill;
 /// Wingman count text
 #[derive(Component)]
 pub struct WingmanCountText;
+
+/// Ability indicator container
+#[derive(Component)]
+pub struct AbilityIndicatorContainer;
+
+/// Ability indicator fill bar
+#[derive(Component)]
+pub struct AbilityIndicatorFill;
+
+/// Ability indicator name text
+#[derive(Component)]
+pub struct AbilityIndicatorText;
+
+/// Ability cooldown key hint
+#[derive(Component)]
+pub struct AbilityKeyHint;
 
 fn spawn_hud(mut commands: Commands) {
     commands
@@ -436,6 +453,8 @@ fn spawn_hud(mut commands: Commands) {
                                 Color::srgb(0.8, 0.2, 0.8),
                                 "BERSERK",
                             );
+                            // Ship ability indicator (blue/cyan)
+                            spawn_ability_indicator(left);
                         });
 
                     // Center: Spacer to push wingman gauge right
@@ -1116,6 +1135,133 @@ fn update_wingman_gauge(
             "{}/{} | Active: {}",
             tracker.kill_count, tracker.kills_per_wingman, wingman_count
         );
+    }
+}
+
+/// Spawn the ability indicator UI
+fn spawn_ability_indicator(parent: &mut ChildBuilder) {
+    // Container with label, key hint, and cooldown bar
+    parent
+        .spawn((
+            AbilityIndicatorContainer,
+            Node {
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(2.0),
+                align_items: AlignItems::FlexStart,
+                margin: UiRect::top(Val::Px(8.0)),
+                ..default()
+            },
+        ))
+        .with_children(|container| {
+            // Top row: ability name + key hint
+            container
+                .spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(8.0),
+                    align_items: AlignItems::Center,
+                    ..default()
+                })
+                .with_children(|row| {
+                    // Ability name
+                    row.spawn((
+                        AbilityIndicatorText,
+                        Text::new("ABILITY"),
+                        TextFont {
+                            font_size: 11.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.3, 0.8, 1.0)), // Cyan
+                    ));
+
+                    // Key hint
+                    row.spawn((
+                        AbilityKeyHint,
+                        Text::new("[SHIFT/RT]"),
+                        TextFont {
+                            font_size: 9.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.5, 0.5, 0.5)),
+                    ));
+                });
+
+            // Cooldown bar container
+            container
+                .spawn((
+                    Node {
+                        width: Val::Px(100.0),
+                        height: Val::Px(8.0),
+                        border: UiRect::all(Val::Px(1.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.1, 0.15, 0.2, 0.9)),
+                    BorderColor(Color::srgb(0.2, 0.4, 0.6)),
+                    BorderRadius::all(Val::Px(2.0)),
+                ))
+                .with_children(|bar| {
+                    // Fill bar
+                    bar.spawn((
+                        AbilityIndicatorFill,
+                        Node {
+                            width: Val::Percent(100.0),
+                            height: Val::Percent(100.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.3, 0.8, 1.0)), // Cyan
+                        BorderRadius::all(Val::Px(1.0)),
+                    ));
+                });
+        });
+}
+
+/// Update ability indicator display based on player's ability state
+fn update_ability_indicator(
+    player_query: Query<&Ability, With<Player>>,
+    mut container_query: Query<&mut Node, With<AbilityIndicatorContainer>>,
+    mut fill_query: Query<
+        (&mut Node, &mut BackgroundColor),
+        (With<AbilityIndicatorFill>, Without<AbilityIndicatorContainer>),
+    >,
+    mut text_query: Query<&mut Text, With<AbilityIndicatorText>>,
+) {
+    let Ok(ability) = player_query.get_single() else {
+        return;
+    };
+
+    // Hide if no ability
+    for mut node in container_query.iter_mut() {
+        node.display = if ability.ability_type == AbilityType::None {
+            Display::None
+        } else {
+            Display::Flex
+        };
+    }
+
+    if ability.ability_type == AbilityType::None {
+        return;
+    }
+
+    // Update ability name
+    for mut text in text_query.iter_mut() {
+        **text = ability.ability_type.name().to_string();
+    }
+
+    // Update cooldown bar
+    let progress = ability.cooldown_progress();
+    for (mut node, mut bg_color) in fill_query.iter_mut() {
+        node.width = Val::Percent(progress * 100.0);
+
+        // Color changes: cyan when ready, dark blue when on cooldown, pulsing when active
+        if ability.is_active {
+            // Pulsing white/cyan when active
+            bg_color.0 = Color::srgb(0.8, 0.95, 1.0);
+        } else if progress >= 1.0 {
+            // Ready - bright cyan
+            bg_color.0 = Color::srgb(0.3, 0.9, 1.0);
+        } else {
+            // Cooldown - darker blue
+            bg_color.0 = Color::srgb(0.2, 0.4, 0.6);
+        }
     }
 }
 

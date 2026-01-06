@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 
 use crate::core::*;
-use crate::systems::{EngineTrail, ManeuverState};
+use crate::systems::{Ability, AbilityEffects, AbilityType, EngineTrail, ManeuverState};
 use bevy::prelude::*;
 
 /// Marker component for the player entity
@@ -338,6 +338,15 @@ fn spawn_player(
         engine_trail.offset.y = -engine_trail.offset.y;
     }
 
+    // Create ability from ship definition
+    let ability_type = AbilityType::from_special(ship_def.special);
+
+    info!(
+        "Ship ability: {:?} ({})",
+        ability_type,
+        ability_type.name()
+    );
+
     // Use sprites (2D camera compatible)
     if let Some(texture) = sprite_cache.get(type_id) {
         info!(
@@ -352,6 +361,8 @@ fn spawn_player(
             stats,
             movement,
             weapon,
+            Ability::new(ability_type),
+            AbilityEffects::default(),
             Hitbox::default(),
             super::collectible::PowerupEffects::default(),
             ManeuverState::default(),
@@ -372,6 +383,8 @@ fn spawn_player(
             stats,
             movement,
             weapon,
+            Ability::new(ability_type),
+            AbilityEffects::default(),
             Hitbox::default(),
             super::collectible::PowerupEffects::default(),
             ManeuverState::default(),
