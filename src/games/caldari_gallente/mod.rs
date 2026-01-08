@@ -3,7 +3,7 @@
 //! Caldari vs Gallente faction warfare over Caldari Prime.
 
 use super::{ActiveModule, FactionInfo, GameModuleInfo, ModuleRegistry};
-use crate::core::{Difficulty, Faction, GameSession, GameState};
+use crate::core::{Difficulty, Faction, GameSession, GameState, LAYER_PLAYER_BULLETS};
 use crate::entities::projectile::ProjectilePhysics;
 use crate::systems::JoystickState;
 use bevy::ecs::schedule::common_conditions::not;
@@ -130,6 +130,7 @@ impl Plugin for CaldariGallentePlugin {
                 last_stand_input,
                 update_last_stand_hud,
                 spawn_last_stand_enemies,
+                update_titan_fighters,
             )
                 .chain()
                 .run_if(in_state(GameState::Playing))
@@ -404,14 +405,16 @@ fn mode_select_input(
         || joystick.confirm()
     {
         if state.selected == 1 {
-            // Last Stand mode selected
+            // Last Stand mode selected - skip difficulty and ship select, go straight to Playing
             last_stand.start();
             info!("Starting THE LAST STAND - CNS Kairiola defense!");
+            mode_state.set(CGModeSelect::Inactive);
+            next_state.set(GameState::Playing);
         } else {
             info!("Starting Campaign mode");
+            mode_state.set(CGModeSelect::Inactive);
+            next_state.set(GameState::DifficultySelect);
         }
-        mode_state.set(CGModeSelect::Inactive);
-        next_state.set(GameState::DifficultySelect);
     }
 
     // Back to faction select
@@ -2762,7 +2765,22 @@ fn last_stand_input(
             "Launching fighter squadron! {} remaining",
             last_stand.fighters_remaining
         );
-        // TODO: Spawn fighter entity
+        // Spawn 3 fighters in a formation
+        for i in 0..3 {
+            let offset_x = (i as f32 - 1.0) * 40.0; // -40, 0, +40
+            commands.spawn((
+                last_stand::TitanFighter {
+                    lifetime: 10.0,
+                    target: None,
+                },
+                Sprite {
+                    color: Color::srgb(0.5, 0.7, 1.0), // Caldari blue
+                    custom_size: Some(Vec2::new(16.0, 20.0)),
+                    ..default()
+                },
+                Transform::from_xyz(offset_x, -200.0, LAYER_PLAYER_BULLETS),
+            ));
+        }
     }
 
     // ECM Burst (LB / E)
@@ -2976,6 +2994,7 @@ fn despawn_last_stand(
     titan_query: Query<Entity, With<LastStandTitan>>,
     ecm_query: Query<Entity, With<last_stand::EcmBurst>>,
     beam_query: Query<Entity, With<last_stand::DoomsdayBeam>>,
+    fighter_query: Query<Entity, With<last_stand::TitanFighter>>,
 ) {
     last_stand.end();
 
@@ -2990,5 +3009,107 @@ fn despawn_last_stand(
     }
     for entity in beam_query.iter() {
         commands.entity(entity).despawn_recursive();
+    }
+    for entity in fighter_query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+/// Update titan fighters - movement, targeting, damage, lifetime
+fn update_titan_fighters(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut fighter_query: Query<(Entity, &mut last_stand::TitanFighter, &mut Transform)>,
+    enemy_query: Query<
+        (Entity, &Transform, &crate::entities::EnemyStats),
+        (
+            With<crate::entities::Enemy>,
+            Without<last_stand::TitanFighter>,
+        ),
+    >,
+    mut last_stand: ResMut<LastStandState>,
+) {
+    let dt = time.delta_secs();
+    const FIGHTER_SPEED: f32 = 350.0;
+    const FIGHTER_DAMAGE: f32 = 25.0;
+    const FIGHTER_HIT_RANGE: f32 = 30.0;
+    const FIGHTER_ACQUIRE_RANGE: f32 = 400.0;
+
+    for (fighter_entity, mut fighter, mut transform) in fighter_query.iter_mut() {
+        // Decrement lifetime
+        fighter.lifetime -= dt;
+        if fighter.lifetime <= 0.0 {
+            commands.entity(fighter_entity).despawn();
+            continue;
+        }
+
+        // Find or validate target
+        let mut current_target_valid = false;
+        let mut target_pos = None;
+
+        if let Some(target_entity) = fighter.target {
+            // Check if target still exists
+            if let Ok((_, enemy_transform, _)) = enemy_query.get(target_entity) {
+                current_target_valid = true;
+                target_pos = Some(enemy_transform.translation.truncate());
+            }
+        }
+
+        // Acquire new target if needed
+        if !current_target_valid {
+            fighter.target = None;
+            let fighter_pos = transform.translation.truncate();
+            let mut closest_dist = FIGHTER_ACQUIRE_RANGE;
+
+            for (enemy_entity, enemy_transform, _) in enemy_query.iter() {
+                let enemy_pos = enemy_transform.translation.truncate();
+                let dist = fighter_pos.distance(enemy_pos);
+                if dist < closest_dist {
+                    closest_dist = dist;
+                    fighter.target = Some(enemy_entity);
+                    target_pos = Some(enemy_pos);
+                }
+            }
+        }
+
+        // Move toward target or fly upward if no target
+        let fighter_pos = transform.translation.truncate();
+        let direction = if let Some(target) = target_pos {
+            (target - fighter_pos).normalize_or_zero()
+        } else {
+            Vec2::Y // Fly upward if no target
+        };
+
+        transform.translation.x += direction.x * FIGHTER_SPEED * dt;
+        transform.translation.y += direction.y * FIGHTER_SPEED * dt;
+
+        // Rotate to face movement direction
+        if direction != Vec2::ZERO {
+            let angle = direction.y.atan2(direction.x) - std::f32::consts::FRAC_PI_2;
+            transform.rotation = Quat::from_rotation_z(angle);
+        }
+
+        // Check for collision with target enemy
+        if let Some(target_entity) = fighter.target {
+            if let Ok((_, enemy_transform, _)) = enemy_query.get(target_entity) {
+                let enemy_pos = enemy_transform.translation.truncate();
+                if fighter_pos.distance(enemy_pos) < FIGHTER_HIT_RANGE {
+                    // Deal damage via event or direct despawn for now
+                    // For simplicity, despawn the enemy and count as kill
+                    if let Some(entity_commands) = commands.get_entity(target_entity) {
+                        entity_commands.despawn_recursive();
+                        last_stand.kills += 1;
+                    }
+                    fighter.target = None;
+
+                    // Fighter continues to next target (doesn't despawn on hit)
+                }
+            }
+        }
+
+        // Despawn if off-screen (too far up)
+        if transform.translation.y > 400.0 {
+            commands.entity(fighter_entity).despawn();
+        }
     }
 }

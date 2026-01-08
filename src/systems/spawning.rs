@@ -10,6 +10,7 @@ use crate::entities::{
     spawn_enemy, spawn_kamikaze, spawn_sniper, spawn_spawner_enemy, spawn_tank, spawn_weaver,
     EnemyBehavior,
 };
+use crate::games::caldari_gallente::LastStandState;
 use bevy::prelude::*;
 
 /// Spawning plugin
@@ -20,15 +21,21 @@ impl Plugin for SpawningPlugin {
         app.init_resource::<WaveManager>()
             .add_systems(
                 OnEnter(GameState::Playing),
-                (reset_wave_manager, spawn_enemy_carrier),
+                (reset_wave_manager, spawn_enemy_carrier).run_if(not_last_stand),
             )
             .add_systems(OnExit(GameState::Playing), cleanup_carrier)
             .add_systems(
                 Update,
                 (wave_spawning, handle_spawn_events, animate_carrier)
-                    .run_if(in_state(GameState::Playing)),
+                    .run_if(in_state(GameState::Playing))
+                    .run_if(not_last_stand),
             );
     }
+}
+
+/// Run condition: Last Stand mode is NOT active
+fn not_last_stand(last_stand: Option<Res<LastStandState>>) -> bool {
+    last_stand.map(|ls| !ls.active).unwrap_or(true)
 }
 
 /// Marker component for the enemy carrier in background
