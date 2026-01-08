@@ -8,6 +8,7 @@
 use bevy::prelude::*;
 
 pub mod caldari_gallente;
+pub mod elder_fleet;
 
 /// Game modules plugin - registers all available game modules
 pub struct GameModulesPlugin;
@@ -16,6 +17,7 @@ impl Plugin for GameModulesPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<ModuleRegistry>()
             .init_resource::<ActiveModule>()
+            .add_plugins(elder_fleet::ElderFleetPlugin)
             .add_plugins(caldari_gallente::CaldariGallentePlugin);
     }
 }
@@ -83,7 +85,7 @@ impl ActiveModule {
     }
 
     pub fn is_elder_fleet(&self) -> bool {
-        self.module_id.is_none() || self.module_id.as_deref() == Some("elder_fleet")
+        self.module_id.as_deref() == Some("elder_fleet")
     }
 }
 
